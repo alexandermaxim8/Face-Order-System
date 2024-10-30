@@ -18,12 +18,13 @@ config = {
 firestore_url = "https://firestore.googleapis.com"
 databaseId = "(default)"
 
-def init_firebase():
+def init_firebase(email, password):
     auth = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={config["apiKey"]}"
     auth_headers = {"Content-Type": "application/json"}
-    data = {"email": "admin@gmail.com", "password": "admin", "returnSecureToken": True}
+    data = {"email": email, "password": password, "returnSecureToken": True}
     response = requests.post(auth, data=json.dumps(data), headers=auth_headers)
     json_response = response.json()
+    print(json_response)
     idToken = json_response["idToken"]
     refreshToken = json_response["refreshToken"]
     return idToken, refreshToken
@@ -78,8 +79,9 @@ def get_menu(idToken, user, id=None):
         ref = response.json()["documents"]["fields"]["menu"]["arrayValue"]["values"]
         for ref in ref["referenceValue"]:
             response = requests.get(f"{firestore_url}/v1beta1/{ref}", headers=firestore_header)
-            menu["name"].append(response.json()["documents"]["fields"]["name"]["stringValue"])
-            menu["price"].append(response.json()["documents"]["fields"]["price"]["integerValue"])
+            # menu["name"].append(response.json()["documents"]["fields"]["name"]["stringValue"])
+            # menu["price"].append(response.json()["documents"]["fields"]["price"]["integerValue"])
+            menu.append(response.json()["documents"])
     else:
         parents = f"projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}"
         collectionId = "menu"
