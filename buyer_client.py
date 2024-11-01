@@ -17,7 +17,7 @@ config = {
   "firestore_url": "https://firestore.googleapis.com"
 }
 
-auth = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={config["apiKey"]}"
+auth = f'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={config["apiKey"]}'
 auth_headers = {"Content-Type": "application/json"}
 
 
@@ -74,7 +74,7 @@ while True:
 
     price = 0
     for i, menu_pilihan in enumerate(response.json()["menu"]):
-      print(f"{i+1}. {menu_pilihan["fields"]["name"]["stringValue"]} - Rp.{menu_pilihan["fields"]["price"]["integerValue"]}")
+      print(f'{i+1}. {menu_pilihan["fields"]["name"]["stringValue"]} - Rp.{menu_pilihan["fields"]["price"]["integerValue"]}')
       price += int(menu_pilihan[i-1]["fields"]["price"]["integerValue"])
 
     proceed = input("Proceed?(y/n)")
@@ -87,14 +87,14 @@ while True:
 
   databaseId = "(default)"
   firestore_url = "https://firestore.googleapis.com"
-  parents = f"projects/{config["projectId"]}/databases/{databaseId}/documents/users/admin@gmail.com"
+  parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/admin@gmail.com'
   collectionId = "menu"
   response = requests.get(f"{firestore_url}/v1beta1/{parents}/{collectionId}", headers=firestore_header)
   json_response = response.json()
   menu = json_response["documents"]
   # menu = fb.get_menu(idToken, email)
   for i, menu_pilihan in enumerate(menu):
-    print(f"{i+1}. {menu_pilihan["fields"]["name"]["stringValue"]} - Rp.{menu_pilihan["fields"]["price"]["integerValue"]}")
+    print(f'{i+1}. {menu_pilihan["fields"]["name"]["stringValue"]} - Rp.{menu_pilihan["fields"]["price"]["integerValue"]}')
 
   menupick = input("Pick yours:")
   if not menupick.startswith("["):
@@ -137,7 +137,7 @@ while True:
 
   price = 0
   for i in menupick:
-    print(f"{menu[i-1]["fields"]["name"]["stringValue"]} - Rp.{menu[i-1]["fields"]["price"]["integerValue"]}")
+    print(f'{menu[i-1]["fields"]["name"]["stringValue"]} - Rp.{menu[i-1]["fields"]["price"]["integerValue"]}')
     price += int(menu[i-1]["fields"]["price"]["integerValue"])
   print(f"Total: {price}")
   print("You're food is being cooked, wait and enjoy!")

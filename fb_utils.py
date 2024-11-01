@@ -19,7 +19,7 @@ firestore_url = "https://firestore.googleapis.com"
 databaseId = "(default)"
 
 def init_firebase(email, password):
-    auth = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={config["apiKey"]}"
+    auth = f'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={config["apiKey"]}'
     auth_headers = {"Content-Type": "application/json"}
     data = {"email": email, "password": password, "returnSecureToken": True}
     response = requests.post(auth, data=json.dumps(data), headers=auth_headers)
@@ -48,7 +48,7 @@ def generate_id(idToken, user):
             return r
 
 def add_user(idToken, id, menu, user):
-    parents = f"projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}"
+    parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}'
     collectionId = "pelanggan"
     firestore_header = {
         "Authorization": f"Bearer {idToken}",
@@ -77,7 +77,7 @@ def get_menu(idToken, user, id=None):
     }
     if id:
         menu = {"name":[], "price":[]}
-        name = f"projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/users/{id}"
+        name = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/users/{id}'
         response = requests.get(f"{firestore_url}/v1beta1/{name}", headers=firestore_header)
         ref = response.json()["documents"]["fields"]["menu"]["arrayValue"]["values"]
         for ref in ref["referenceValue"]:
@@ -86,7 +86,7 @@ def get_menu(idToken, user, id=None):
             # menu["price"].append(response.json()["documents"]["fields"]["price"]["integerValue"])
             menu.append(response.json()["documents"])
     else:
-        parents = f"projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}"
+        parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}'
         collectionId = "menu"
         response = requests.get(f"{firestore_url}/v1beta1/{parents}/{collectionId}", headers=firestore_header)
         json_response = response.json()
@@ -98,7 +98,7 @@ def log_menu(idToken, user, menu):
         "Authorization": f"Bearer {idToken}",
         "Content-Type": "application/json"
     }
-    parents = f"projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}"
+    parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}'
     collectionId = "sales"
     data = {
     "fields": {
