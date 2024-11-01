@@ -29,16 +29,19 @@ def init_firebase(email, password):
     refreshToken = json_response["refreshToken"]
     return idToken, refreshToken
 
-def new_id(idToken, user):
+def generate_id(idToken, user):
+    print("tesstttt")
     firestore_header = {
         "Authorization": f"Bearer {idToken}",
         "Content-Type": "application/json"
     }
-    parents = f"projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}"
+    parents = f"projects/{config['projectId']}/databases/{databaseId}/documents/users/{user}"
     collectionId = "pelanggan"
-    response = requests.get(f"{firestore_url}/v1beta1/{parents}/{collectionId}", headers=firestore_header)
+    response = requests.get(f"{firestore_url}/v1/{parents}/{collectionId}", headers=firestore_header)
     json_response = response.json()
+    print(json_response)
     ids = [int(doc["fields"]["id"]["integerValue"]) for doc in json_response["documents"]]
+    print(ids)
     while True:
         r = random.randint(1,300)
         if r not in ids:
@@ -64,7 +67,7 @@ def add_user(idToken, id, menu, user):
             }
         }
     }
-    response = requests.post(f"{firestore_url}/v1beta1/{parents}/{collectionId}", data=json.dumps(data), headers=firestore_header)
+    response = requests.patch(f"{firestore_url}/v1beta1/{parents}/{collectionId}/{id}", data=json.dumps(data), headers=firestore_header)
     print(response.json())
 
 def get_menu(idToken, user, id=None):
@@ -100,7 +103,7 @@ def log_menu(idToken, user, menu):
     data = {
     "fields": {
         "datetime": {
-            "timestampValue":f"{datetime.now(timezone.utc)}"
+            "timestampValue":f"{datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}"
         },
         "menu":{
             "arrayValue":{

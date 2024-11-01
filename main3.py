@@ -13,34 +13,79 @@ import uvicorn
 import base64
 import fb_utils as fb
 
-token = fb.init_firebase("server@gmail.com", "server12345")
+# token = fb.init_firebase("server@gmail.com", "server12345")
 
 id = []
 known_face = []
 
 app = FastAPI()
 
-class ReferenceValue(BaseModel):
-    referenceValue: str
+# class ReferenceValue(BaseModel):
+#     referenceValue: str
 
-class ArrayValue(BaseModel):
-    values: List[ReferenceValue]
+# class ArrayValue(BaseModel):
+#     values: List[ReferenceValue]
+
+# class Fields(BaseModel):
+#     id: Optional[int]
+#     menu: ArrayValue
+
+# class Fields(BaseModel):
+#     name: Optional[int]
+#     price: ArrayValue
+
+# class FirestoreDocument(BaseModel):
+#     name: str
+#     fields: Fields
+#     createTime: datetime
+#     updateTime: datetime
+
+class PriceField(BaseModel):
+    integerValue: str
+
+    def to_dict(self):
+        return {
+            "integerValue": self.integerValue
+        }
+
+class NameField(BaseModel):
+    stringValue: str
+
+    def to_dict(self):
+        return {
+            "stringValue": self.stringValue
+        }
 
 class Fields(BaseModel):
-    id: Optional[int]
-    menu: ArrayValue
+    price: PriceField
+    name: NameField
+
+    def to_dict(self):
+        return {
+            "price": self.price.to_dict(),
+            "name": self.name.to_dict()
+        }
 
 class FirestoreDocument(BaseModel):
     name: str
     fields: Fields
-    createTime: datetime
-    updateTime: datetime
+    createTime: str
+    updateTime: str
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "fields": self.fields.to_dict(),
+            "createTime": self.createTime,
+            "updateTime": self.updateTime
+        }
 
 class Item(BaseModel):
     # name: Optional[str] = None
-    menu: Optional[FirestoreDocument] = None
+    menu: Optional[List[FirestoreDocument]] = None
     face: str
     user: str
+    token: str
 
 @app.get("/")
 async def root():
@@ -48,10 +93,13 @@ async def root():
 
 @app.post("/train")
 async def train(item: Item):  # Use Body to indicate raw byte data
+    print("Success1")
     image_data = item.face
     # name = item.name
-    menu = item.menu
+    menu = [document.to_dict() for document in item.menu]
+    print(menu)
     user = item.user
+    token = item.token
     image_bytes = base64.b64decode(image_data)
     try:
         # Debugging print to check if data is received
@@ -87,7 +135,8 @@ async def train(item: Item):  # Use Body to indicate raw byte data
             known_face = []
 
         # Save the new face encoding
-        new_id = new_id(token["idToken"])
+        print("tesstttt")
+        new_id = fb.generate_id(token, user)
         known_face.append(new_face)
         # print(len(known_face))
         id.append(new_id)
@@ -99,7 +148,8 @@ async def train(item: Item):  # Use Body to indicate raw byte data
         with open(f'{user}.pkl', 'wb') as f:
             pickle.dump(data, f)
 
-        fb.add_user(token["idToken"], new_id, menu, user)
+        fb.add_user(token, new_id, menu, user)
+        print("Success")
 
         return {"status": "Training completed", "new_id": new_id, "menu": menu}
 
@@ -111,6 +161,7 @@ async def train(item: Item):  # Use Body to indicate raw byte data
 async def predict(item: Item):
     user = item.user
     image_data = item.face
+    token = item.token
     image_bytes = base64.b64decode(image_data)
     img = Image.open(io.BytesIO(image_bytes))
     img = np.array(img)

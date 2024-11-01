@@ -21,8 +21,8 @@ auth = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?k
 auth_headers = {"Content-Type": "application/json"}
 
 
-email = input("Email:")
-password = input("Password:")
+email = "admin@gmail.com"
+password = "admin12345"
 # data = {"email": email, "password": password, "returnSecureToken": True}
 # try:
 #   response = requests.post(auth, data=json.dumps(data), headers=auth_headers)
@@ -60,7 +60,7 @@ while True:
       if key == ord('q'):
           break
     video.release()
-    cv2.destroyAllWindows 
+    cv2.destroyAllWindows() 
     img = frame
     # img = cv2.imread("orang3.jpg", cv2.COLOR_BGR2RGB)
     retval, buffer = cv2.imencode('.jpg', img)
@@ -69,13 +69,13 @@ while True:
     headers = {'Content-Type': 'application/json'}
     face = {"face": image_base64, "user": email}
     response = requests.post("http://127.0.0.1:8000/predict", data=json.dumps(face), headers=headers) 
-    # print(response)
+    print(response)
     print(response.json())
 
     price = 0
-    for i, menu in enumerate(response.json()["menu"]):
-      print(f"{i+1}. {menu["fields"]["name"]["stringValue"]} - Rp.{menu["fields"]["price"]["integerValue"]}")
-      price += int(menu[i-1]["fields"]["price"]["integerValue"])
+    for i, menu_pilihan in enumerate(response.json()["menu"]):
+      print(f"{i+1}. {menu_pilihan["fields"]["name"]["stringValue"]} - Rp.{menu_pilihan["fields"]["price"]["integerValue"]}")
+      price += int(menu_pilihan[i-1]["fields"]["price"]["integerValue"])
 
     proceed = input("Proceed?(y/n)")
     if proceed == "y":
@@ -85,19 +85,21 @@ while True:
     
   print("How you doin? Please grab some food!")
 
-  # databaseId = "(default)"
-  # firestore_url = "https://firestore.googleapis.com"
-  # parents = f"projects/{config["projectId"]}/databases/{databaseId}/documents/users/admin@gmail.com"
-  # collectionId = "menu"
-  # response = requests.get(f"{firestore_url}/v1beta1/{parents}/{collectionId}", headers=firestore_header)
-  # json_response = response.json()
-  # menu = json_response["documents"]
-  menu = fb.get_menu(idToken, email)
-  for i, menu in enumerate(menu):
-    print(f"{i+1}. {menu["fields"]["name"]["stringValue"]} - Rp.{menu["fields"]["price"]["integerValue"]}")
+  databaseId = "(default)"
+  firestore_url = "https://firestore.googleapis.com"
+  parents = f"projects/{config["projectId"]}/databases/{databaseId}/documents/users/admin@gmail.com"
+  collectionId = "menu"
+  response = requests.get(f"{firestore_url}/v1beta1/{parents}/{collectionId}", headers=firestore_header)
+  json_response = response.json()
+  menu = json_response["documents"]
+  # menu = fb.get_menu(idToken, email)
+  for i, menu_pilihan in enumerate(menu):
+    print(f"{i+1}. {menu_pilihan["fields"]["name"]["stringValue"]} - Rp.{menu_pilihan["fields"]["price"]["integerValue"]}")
 
   menupick = input("Pick yours:")
-  menupick = ast.literal_eval(menupick)
+  if not menupick.startswith("["):
+    menupick = "[" + menupick + "]"
+  menupick = list(ast.literal_eval(menupick))
 
   register_new = input("Do you want to add a new personalization account?")
 
@@ -117,7 +119,7 @@ while True:
       if key == ord('q'):
           break
     video.release()
-    cv2.destroyAllWindows 
+    cv2.destroyAllWindows() 
     img = frame
     # img = cv2.imread("orang2.jpg", cv2.COLOR_BGR2RGB)
     retval, buffer = cv2.imencode('.jpg', img)
@@ -128,9 +130,10 @@ while True:
     print(menupick)
     print(menu)
     menu = [menu[x-1] for x in menupick]
-    face = {"menu": menu, "face": image_base64, "user": email}
+    print(menu)
+    face = {"menu": menu, "face": image_base64, "user": email, "token":idToken}
     response = requests.post("http://127.0.0.1:8000/train", data=json.dumps(face), headers=headers) 
-    print(response)
+    print(response.text)
 
   price = 0
   for i in menupick:
