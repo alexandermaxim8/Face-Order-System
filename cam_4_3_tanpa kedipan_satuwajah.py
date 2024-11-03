@@ -57,45 +57,57 @@ while True:
     # Konversi ke RGB (face_recognition menggunakan format RGB)
     rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
 
-    if frame_count % frame_skip == 0:
-        # Hanya proses setiap 'frame_skip' frame
-        # Deteksi lokasi wajah dan encoding dalam frame saat ini
-        face_locations = FR.face_locations(rgb_small_frame, model='hog')
-        print("face_locations",np.shape(face_locations))
-        face_encodings = FR.face_encodings(rgb_small_frame, face_locations)
-        print("face_encodings",np.shape(face_encodings))
-        print(face_encodings)
+    # if frame_count % frame_skip == 0:
+    #############################
+    # Deteksi lokasi wajah
+    face_locations = FR.face_locations(rgb_small_frame, model='hog')
+    print("face_locations", np.shape(face_locations))
 
-        face_names = []
-        for face_encoding in face_encodings: # loop bila terdapat lebih dari satu wajah orang 
-            print("face_encoding: ",face_encoding)
-            # Bandingkan wajah dengan encoding yang dikenal
-            matches = FR.compare_faces(known_encodings, face_encoding, tolerance=0.4)
-            print("matces",matches)
+    # Dapatkan encoding wajah
+    face_encodings = FR.face_encodings(rgb_small_frame, face_locations)
+    print("face_encodings", np.shape(face_encodings))
+    print(face_encodings)
+        
+    face_names = []
+    if len(face_encodings) > 0: # Jika ada wajah terdeteksi
+        face_encoding = face_encodings[0]
+        # # Jika lebih dari satu wajah terdeteksi
+        # if len(face_encodings) > 1:
+        #     # Hitung area setiap bounding box
+        #     face_areas = [(bottom - top) * (right - left) for (top, right, bottom, left) in face_locations]
+        #     # Dapatkan indeks wajah dengan area terbesar
+        #     largest_face_index = np.argmax(face_areas)
+        #     # Ambil encoding dan lokasi wajah terbesar
+        #     face_encoding = face_encodings[largest_face_index]
+        # else:
+        #     # Jika hanya satu wajah terdeteksi
+        #     face_encoding = face_encodings[0]
+        
+        # Proses encoding wajah
+        print("face_encoding: ", face_encoding)
+        # Bandingkan dengan encoding yang dikenal
+        matches = FR.compare_faces(known_encodings, face_encoding, tolerance=0.4)
+        print("matches", matches)
+        name = "Unknown"
+
+        # Dapatkan jarak ke encoding yang dikenal
+        face_distances = FR.face_distance(known_encodings, face_encoding)
+        best_match_index = np.argmin(face_distances)
+        
+        if face_distances[best_match_index] < 0.4:
+            name = known_names[best_match_index]
+            name += f' ({face_distances[best_match_index]:.2f})'  # Menambahkan nilai kepercayaan pada nama
+        else:
             name = "Unknown"
+            name += f' ({face_distances[best_match_index]:.2f})' 
 
-            # Menggunakan jarak terkecil ke encoding yang dikenal
-            face_distances = FR.face_distance(known_encodings, face_encoding)
-            best_match_index = np.argmin(face_distances)
-            
-            if face_distances[best_match_index] < 0.4: # Jika jarak terkecil kurang dari 0.4, maka wajah dikenali
-                name = known_names[best_match_index]
-                name += f' ({face_distances[best_match_index]:.2f})'  # Menambahkan nilai kepercayaan pada nama
-            else:
-                name = "Unknown"
-                name += f' ({face_distances[best_match_index]:.2f})' 
-
-            face_names.append(name)
+        face_names.append(name)
         print("face_names: ", face_names)
 
-        # Simpan hasil pengenalan untuk digunakan pada frame berikutnya
-        prev_face_locations = face_locations
-        prev_face_names = face_names
     else:
-        # Gunakan hasil pengenalan sebelumnya
-        face_locations = prev_face_locations
-        face_names = prev_face_names
+        print("No face detected")
 
+ 
     # Menampilkan hasil
     for (top, right, bottom, left), name in zip(face_locations, face_names):
         # Skala kembali lokasi wajah karena kita mengubah ukuran frame sebelumnya

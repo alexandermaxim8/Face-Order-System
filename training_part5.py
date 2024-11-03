@@ -44,7 +44,7 @@ else:
                 rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
             # Deteksi lokasi wajah menggunakan model CNN
-            face_locations = FR.face_locations(rgb_image, model='cnn')
+            face_locations = FR.face_locations(rgb_image, model='hog')
 
             # Jika setidaknya ada satu wajah terdeteksi
             if len(face_locations) == 1:
