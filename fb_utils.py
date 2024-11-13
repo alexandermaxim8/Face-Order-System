@@ -2,7 +2,8 @@ import requests
 import json
 import random
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import numpy as np
 
 config = {
   "apiKey": "AIzaSyAy-FlE4rL-V2BwJ8oZEVhqiMY3qfqcQsA",
@@ -24,28 +25,28 @@ def init_firebase(email, password):
     data = {"email": email, "password": password, "returnSecureToken": True}
     response = requests.post(auth, data=json.dumps(data), headers=auth_headers)
     json_response = response.json()
-    print(json_response)
+    # print(json_response)
     idToken = json_response["idToken"]
     refreshToken = json_response["refreshToken"]
     return idToken, refreshToken
 
 def generate_id(idToken, user):
-    print("tesstttt")
+    print("generate_id function") 
     firestore_header = {
         "Authorization": f"Bearer {idToken}",
         "Content-Type": "application/json"
     }
-    parents = f"projects/{config['projectId']}/databases/{databaseId}/documents/users/{user}"
+    parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}'
     collectionId = "pelanggan"
     response = requests.get(f"{firestore_url}/v1/{parents}/{collectionId}", headers=firestore_header)
     json_response = response.json()
-    print(json_response)
+    #print(json_response)
     ids = [int(doc["fields"]["id"]["integerValue"]) for doc in json_response["documents"]]
-    print(ids)
-    while True:
-        r = random.randint(1,300)
-        if r not in ids:
-            return r
+    print("ids sekarang: ", ids)
+    r = int(np.max(ids))+1 if ids else 1
+    print("r: ", r)
+    return r
+
 
 def add_user(idToken, id, menu, user):
     parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}'
@@ -71,26 +72,49 @@ def add_user(idToken, id, menu, user):
     print(response.json())
 
 def get_menu(idToken, user, id=None):
+    # print("\nget_menu function")
+    # print("idToken", idToken)
+    # print("user", user)
+    # print("id", id)
     firestore_header = {
         "Authorization": f"Bearer {idToken}",
         "Content-Type": "application/json"
     }
     if id:
-        menu = {"name":[], "price":[]}
-        name = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/users/{id}'
+        menu = {"name":[], "price":[], "path":[]}
+        name = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/pelanggan/{id}'
         response = requests.get(f"{firestore_url}/v1beta1/{name}", headers=firestore_header)
-        ref = response.json()["documents"]["fields"]["menu"]["arrayValue"]["values"]
-        for ref in ref["referenceValue"]:
-            response = requests.get(f"{firestore_url}/v1beta1/{ref}", headers=firestore_header)
-            # menu["name"].append(response.json()["documents"]["fields"]["name"]["stringValue"])
-            # menu["price"].append(response.json()["documents"]["fields"]["price"]["integerValue"])
-            menu.append(response.json()["documents"])
+        print("response: ", response.json())
+        ref = response.json()["fields"]["menu"]["arrayValue"]["values"]
+        print("ref", ref)
+
+        # Loop through each item in ref, which should be a list of dictionaries
+        for ref_item in ref:
+            # Extract the reference path from each item
+            reference = ref_item.get("referenceValue")
+            if reference:
+                response = requests.get(f"{firestore_url}/v1beta1/{reference}", headers=firestore_header)
+                document = response.json().get("fields", {})
+                path = response.json().get("name", {})
+
+                # Assuming the response contains 'name' and 'price' fields, append them to menu
+                menu["name"].append(document.get("name", {}).get("stringValue", ""))
+                menu["price"].append(document.get("price", {}).get("integerValue", 0))
+                menu["path"].append(path)
+
+    
+        # for ref in ref["referenceValue"]:
+        #     response = requests.get(f"{firestore_url}/v1beta1/{ref}", headers=firestore_header)
+        #     # menu["name"].append(response.json()["documents"]["fields"]["name"]["stringValue"])
+        #     # menu["price"].append(response.json()["documents"]["fields"]["price"]["integerValue"])
+        #     menu.append(response.json()["documents"])
     else:
         parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}'
         collectionId = "menu"
         response = requests.get(f"{firestore_url}/v1beta1/{parents}/{collectionId}", headers=firestore_header)
         json_response = response.json()
         menu = json_response["documents"]
+    print("menu: ", menu)
     return menu
 
 def log_menu(idToken, user, menu):
@@ -103,16 +127,16 @@ def log_menu(idToken, user, menu):
     data = {
     "fields": {
         "datetime": {
-            "timestampValue":f"{datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}"
+            "timestampValue":f'{datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}'
         },
         "menu":{
             "arrayValue":{
-                "values":[{"referenceValue": x["name"]} for x in menu]
+                "values":[{"referenceValue": x} for x in menu]
                 }
             }
         }
     }
-    response = requests.post(f"{firestore_url}/v1beta1/{parents}/{collectionId}", data=json.dumps(data), headers=firestore_header)
+    response = requests.patch(f"{firestore_url}/v1beta1/{parents}/{collectionId}/{str(datetime.now(timezone(timedelta(hours=7))))}", data=json.dumps(data), headers=firestore_header)
     print(response.json())
 
 # def edit_menu(id, id_menu, user):

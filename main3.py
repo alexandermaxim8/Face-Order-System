@@ -86,6 +86,43 @@ class Item(BaseModel):
     face: str
     user: str
     token: str
+ 
+
+def face_recog(img, user):
+    face_locations = FR.face_locations(img, model='hog')
+    test_faces = FR.face_encodings(face_image = img, known_face_locations=face_locations,
+                                     num_jitters=50, model='large')
+    print(f"test_faces: {len(test_faces)}")
+    if len(test_faces) >0:  # Jika ada wajah terdeteksi
+        test_face = test_faces[0]
+    else:
+        print("No face detected in the image")
+ 
+    with open(f'{user}.pkl', 'rb') as f:
+        print("user: ", user)
+        data = pickle.load(f)
+        id = data["id"]
+        known_faces = data["known_face"]
+    try:
+       # matches=FR.compare_faces(known_face, face_encoding, tolerance=0.3)
+       # print("matches: ", matches)
+       face_distances= FR.face_distance(known_faces, test_face)
+       best_match_index = np.argmin(face_distances)
+       print(f"best_match_index: {best_match_index}")
+    except Exception as e:
+        print(f"Compare error: {str(e)}")
+        return {"error": str(e)}
+    
+    if face_distances[best_match_index] < 0.35: # jarak ecludian 
+        print(f"id: {id}")
+        id = id[best_match_index]
+        id=int(id)
+        print(f"id: {id}, distance: {face_distances[best_match_index]:.2f}")
+        return {"found": True, "id": id}
+    else:
+        print(f"id: unknown, distance: {face_distances[best_match_index]:.2f}")
+        return {"found": False}
+
 
 @app.get("/")
 async def root():
@@ -93,7 +130,7 @@ async def root():
 
 @app.post("/train")
 async def train(item: Item):  # Use Body to indicate raw byte data
-    print("Success1")
+    print("train function")
     image_data = item.face
     # name = item.name
     menu = [document.to_dict() for document in item.menu]
@@ -113,13 +150,19 @@ async def train(item: Item):  # Use Body to indicate raw byte data
         except Exception as e:
             print(f"Error in converting image: {str(e)}")
             return {"error": f"Error in converting image: {str(e)}"}
+        
+        if face_recog(img, user)["found"]:
+            return {"status": "Training terminated, similar face data had been registered!"}
 
         # Get face encodings from the image
         try:
-            face_encodings = FR.face_encodings(face_image=img, num_jitters=50, model='large')
+            face_locations = FR.face_locations(img, model='hog')
+            face_encodings = FR.face_encodings(face_image=img,  known_face_locations=face_locations,
+                                               num_jitters=50, model='large')
             if len(face_encodings) == 0:
                 return {"error": "No face detected in the image"}
-            new_face = face_encodings[0]
+            if len(face_encodings) > 0:
+                new_face = face_encodings[0]
         except Exception as e:
             print(f"Error in face encoding: {str(e)}")
             return {"error": f"Error in face encoding: {str(e)}"}
@@ -135,11 +178,13 @@ async def train(item: Item):  # Use Body to indicate raw byte data
             known_face = []
 
         # Save the new face encoding
-        print("tesstttt")
+        print("save the new face encoding")
         new_id = fb.generate_id(token, user)
         known_face.append(new_face)
         # print(len(known_face))
         id.append(new_id)
+        print("training id: ", id)
+        
         data = {
             "id": id,
             "known_face": known_face
@@ -159,27 +204,34 @@ async def train(item: Item):  # Use Body to indicate raw byte data
     
 @app.post("/predict")
 async def predict(item: Item):
+    print("predict function")
     user = item.user
     image_data = item.face
     token = item.token
     image_bytes = base64.b64decode(image_data)
     img = Image.open(io.BytesIO(image_bytes))
     img = np.array(img)
-    test_faces = FR.face_encodings(face_image = img, num_jitters=50, model='large')[0]
+    # print("token: ", token)
+    # print("user: ", user)
+    # print("id: ", id)
 
-    with open(f'{user}.pkl', 'rb') as f:
-        data = pickle.load(f)
-        id = data["id"]
-        known_face = data["known_face"]
-    try:
-        matches=FR.compare_faces(known_face, test_faces)
-    except Exception as e:
-        print(f"Compare error: {str(e)}")
-        return {"error": str(e)}
-
-    if True in matches:
-        id = id[matches.index(True)]
-        menu = fb.get_menu(token["idToken"], user, id=id)
+    found = face_recog(img, user)
+    if found["found"]:
+        id = found["id"]
+        menu = fb.get_menu(token, user, id)
+        print(menu)
         return {"match_id": id, "menu": menu}
+
     else:
         return {"error": "No match found"}
+    
+if __name__ == "__main__":
+    uvicorn.run(app, host="127.0.0.1", port=8000)
+
+    # if True in matches:
+    #     id = id[matches.index(True)]
+    #     menu = fb.get_menu(token["idToken"], user, id=id)
+    #     print("menu: ", menu)
+    #     return {"match_id": id, "menu": menu}
+    # else:
+    #     return {"error": "No match found"}
