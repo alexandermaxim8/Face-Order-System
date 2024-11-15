@@ -22,8 +22,11 @@ auth = f'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?k
 auth_headers = {"Content-Type": "application/json"}
 
 
-email = "admin@gmail.com"
-password = "admin12345"
+# email = "admin@gmail.com"
+# password = "admin12345"
+email = "alexandermaxim8@gmail.com"
+password = "alex12345"
+
 # data = {"email": email, "password": password, "returnSecureToken": True}
 # try:
 #   response = requests.post(auth, data=json.dumps(data), headers=auth_headers)
@@ -177,7 +180,8 @@ def register():
         total_price = sum(int(menu[x-1]["fields"]["price"]["integerValue"]) for x in menupick)
         print(f"Total: Rp.{total_price}")
         print("Your food is being cooked, please wait and enjoy!")
-        
+
+        selected_menu = [menu["name"] for menu in selected_menu]
         fb.log_menu(idToken, email, selected_menu)
 
     except requests.exceptions.ConnectionError as e:    
