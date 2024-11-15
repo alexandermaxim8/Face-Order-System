@@ -8,6 +8,7 @@ import os
 import time
 import numpy as np
 import dlib
+
 config = {
   "apiKey": "AIzaSyAy-FlE4rL-V2BwJ8oZEVhqiMY3qfqcQsA",
   "authDomain": "firestore-despro.firebaseapp.com",
@@ -24,11 +25,8 @@ auth = f'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?k
 auth_headers = {"Content-Type": "application/json"}
 
 
-# email = "admin@gmail.com"
-# password = "admin12345"
-email = "alexandermaxim8@gmail.com"
-password = "alex12345"
-
+email = "admin@gmail.com"
+password = "admin12345"
 # data = {"email": email, "password": password, "returnSecureToken": True}
 # try:
 #   response = requests.post(auth, data=json.dumps(data), headers=auth_headers)
@@ -50,14 +48,6 @@ firestore_header = {
 }
 
 
-
-
-
-
-
-
-
-
 detector = dlib.get_frontal_face_detector()
 script_dir = os.path.dirname(os.path.abspath(__file__))
 facial_landmark_file=   os.path.join(script_dir,'shape_predictor_68_face_landmarks.dat')
@@ -76,6 +66,71 @@ def calculate_ear(eye):
     ear = (A + B) / (2.0 * C)
     return ear
 
+# def pengambilan_gambar():
+#     a=time.time()
+#     #video = cv2.VideoCapture(0)
+#     # untuk windows
+#     video = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+#     # linux
+#     #video = cv2.VideoCapture(0, cv2.CAP_V4L2)
+
+#     video.set(cv2.CAP_PROP_FRAME_WIDTH, 360)
+#     video.set(cv2.CAP_PROP_FRAME_HEIGHT,360)
+#     video.set(cv2.CAP_PROP_FPS, 20)
+#     video.set(cv2.CAP_PROP_BUFFERSIZE, 3) 
+#     video.set(cv2.CAP_PROP_FOURCC,cv2.VideoWriter_fourcc(*'MJPG'))
+#     print("waktu membuka kamera:", time.time()-a)
+#     print("WIDTH, HEIGHT, FPS\n",video.get(cv2.CAP_PROP_FRAME_WIDTH,), video.get(cv2.CAP_PROP_FRAME_HEIGHT), video.get(cv2.CAP_PROP_FPS))
+
+#     # 2. Variable
+#     # 3. While loop
+#     EAR_THRESHOLD = 0.21
+#     EAR_CONSEC_FRAMES = 1
+#     blink_counter = 0
+#     blink_total = 0
+#     liveness = False
+#     sudah_pencet=False
+#     while True:
+#         check, frame = video.read()
+#         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+#         faces = detector(gray, 0)
+#         if cv2.waitKey(1) & 0xFF == ord('c'):
+#             sudah_pencet=True
+#         if sudah_pencet:
+#             cv2.putText(frame, f'silahkan kedip', (50, 100), font, 0.7, (0, 0, 255), 2)
+#             for face in faces:
+#                 shape = predictor(gray, face)
+#                 shape = np.array([[p.x, p.y] for p in shape.parts()])
+
+#                 left_eye = shape[36:42]
+#                 right_eye = shape[42:48]
+
+#                 left_ear = calculate_ear(left_eye)
+#                 right_ear = calculate_ear(right_eye)
+#                 ear = (left_ear + right_ear) / 2.0
+
+#                 if ear < EAR_THRESHOLD:
+#                     blink_counter += 1
+#                 else:
+#                     if blink_counter >= EAR_CONSEC_FRAMES:
+#                         blink_total += 1
+#                         print("Blink detected!")
+#                         cv2.imwrite("captured_frame.jpg", frame)
+#                         liveness = True
+#                         break
+#                     blink_counter = 0
+
+#         font = cv2.FONT_HERSHEY_SIMPLEX
+#         cv2.putText(frame, f'Kedipan: {blink_total}', (10, 30), font, 0.7, (0, 0, 255), 2)
+#         cv2.imshow("Capturing", frame)
+#         if liveness:
+#             break
+#         if cv2.waitKey(1) & 0xFF == ord('q'):
+#             break
+
+#     video.release()
+#     cv2.destroyAllWindows()
+#     return frame
 
 def pengambilan_gambar():
 
@@ -92,9 +147,11 @@ def pengambilan_gambar():
           video.get(cv2.CAP_PROP_FRAME_HEIGHT), video.get(cv2.CAP_PROP_FPS))
 
     EAR_THRESHOLD = 0.21
-    blink_counter =  0
+    EAR_CONSEC_FRAMES = 1
+    blink_counter = blink_total = 0
     liveness = sudah_pencet = False
     font = cv2.FONT_HERSHEY_SIMPLEX
+    iterasi_kedip = 0
 
     while True:
         ret, frame = video.read()
@@ -113,6 +170,7 @@ def pengambilan_gambar():
                 coords = np.array([[p.x, p.y] for p in shape.parts()])
                 left_eye, right_eye = coords[36:42], coords[42:48]
                 ear = (calculate_ear(left_eye) + calculate_ear(right_eye)) / 2.0
+                print("EAR:", ear)
 
                 if ear < EAR_THRESHOLD:
                     blink_counter += 1
@@ -134,12 +192,10 @@ def pengambilan_gambar():
         elif key == ord('q') or liveness:
             break
 
+
     video.release()
     cv2.destroyAllWindows()
     return frame
-
-
-
 
 def order():
     response = None
@@ -233,7 +289,6 @@ def register():
 
 
         face = {"menu": selected_menu, "face": image_base64, "user": email, "token":idToken}
-        # response = requests.post("http://127.0.0.1:8000/train", data=json.dumps(face), headers=headers) 
         response = requests.post("https://98a1-147-135-15-16.ngrok-free.app/train", data=json.dumps(face), headers=headers) 
         response.raise_for_status()
         print("Registration response:", response.text)
@@ -241,8 +296,7 @@ def register():
         total_price = sum(int(menu[x-1]["fields"]["price"]["integerValue"]) for x in menupick)
         print(f"Total: Rp.{total_price}")
         print("Your food is being cooked, please wait and enjoy!")
-
-        selected_menu = [menu["name"] for menu in selected_menu]
+        
         fb.log_menu(idToken, email, selected_menu)
 
     except requests.exceptions.ConnectionError as e:    

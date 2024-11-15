@@ -42,20 +42,26 @@ predictor = dlib.shape_predictor(facial_landmark_file)
 
 # Fungsi untuk menghitung Eye Aspect Ratio (EAR)
 def calculate_ear(eye):
-    # Menghitung jarak Euclidean antara titik mata vertikal
-    A = dist.euclidean(eye[1], eye[5])
-    B = dist.euclidean(eye[2], eye[4])
+    # # Menghitung jarak Euclidean antara titik mata vertikal
+    # A = dist.euclidean(eye[1], eye[5])
+    # B = dist.euclidean(eye[2], eye[4])
+
+    # # Menghitung jarak Euclidean antara titik mata horizontal
+    # C = dist.euclidean(eye[0], eye[3])
+    A = np.linalg.norm(eye[1] - eye[5])
+    B =  np.linalg.norm(eye[2] - eye[4])
 
     # Menghitung jarak Euclidean antara titik mata horizontal
-    C = dist.euclidean(eye[0], eye[3])
+    C = np.linalg.norm(eye[0] - eye[3])
 
     # Menghitung EAR
     ear = (A + B) / (2.0 * C)
+    print(ear)
     return ear
 
 # Ambang batas EAR dan jumlah frame berturut-turut untuk menganggap kedipan
 EAR_THRESHOLD = 0.21
-EAR_CONSEC_FRAMES = 3
+EAR_CONSEC_FRAMES = 1
 
 # Inisialisasi penghitung kedipan
 blink_counter = 0

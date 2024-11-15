@@ -10,7 +10,7 @@ known_encodings = []
 known_names = []
 
 # Nama file untuk menyimpan encoding dan nama
-encodings_file = 'encodings_2.pkl'
+encodings_file = 'encodings_hitamputih.pkl'
 
 # Cek apakah file encoding sudah ada
 if os.path.exists(encodings_file):
@@ -34,24 +34,24 @@ else:
                       glob.glob(os.path.join(person_dir, '*.png'))
 
         for image_path in image_paths:
-            # Memuat gambar
-            print(image_path)
-            image = FR.load_image_file(image_path)
+            # Memuat gambar dalam grayscale
+            image_gray = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
-            # Pastikan gambar dalam format RGB
-            if image.shape[2] == 3:  # Jika gambar memiliki 3 channel
-                rgb_image = image
-            else:
-                rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            # Pastikan gambar berhasil dimuat
+            if image_gray is None:
+                print(f"Gagal memuat gambar {image_path}")
+                continue
 
-            # Deteksi lokasi wajah menggunakan model CNN
-            face_locations = FR.face_locations(rgb_image, model='hog')
+            # Konversi gambar grayscale menjadi gambar pseudo-RGB
+            image_rgb = cv2.cvtColor(image_gray, cv2.COLOR_GRAY2RGB)
 
+            # Deteksi lokasi wajah menggunakan model HOG
+            face_locations = FR.face_locations(image_rgb, model='hog')
 
             # Jika setidaknya ada satu wajah terdeteksi
             if len(face_locations) == 1:
                 # Mendapatkan encoding wajah menggunakan lokasi wajah yang terdeteksi
-                encodings = FR.face_encodings(rgb_image, known_face_locations=face_locations, num_jitters=100, model='large')
+                encodings = FR.face_encodings(image_rgb, known_face_locations=face_locations, num_jitters=100, model='large')
                 known_encodings.append(encodings[0])
                 known_names.append(person_name)
                 print(f"Berhasil memproses gambar {image_path}")

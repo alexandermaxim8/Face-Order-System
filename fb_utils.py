@@ -2,7 +2,7 @@ import requests
 import json
 import random
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import numpy as np
 
 config = {
@@ -72,16 +72,16 @@ def add_user(idToken, id, menu, user):
     print(response.json())
 
 def get_menu(idToken, user, id=None):
-    print("\nget_menu function")
-    print("idToken", idToken)
-    print("user", user)
-    print("id", id)
+    # print("\nget_menu function")
+    # print("idToken", idToken)
+    # print("user", user)
+    # print("id", id)
     firestore_header = {
         "Authorization": f"Bearer {idToken}",
         "Content-Type": "application/json"
     }
     if id:
-        menu = {"name":[], "price":[]}
+        menu = {"name":[], "price":[], "path":[]}
         name = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/pelanggan/{id}'
         response = requests.get(f"{firestore_url}/v1beta1/{name}", headers=firestore_header)
         print("response: ", response.json())
@@ -95,10 +95,12 @@ def get_menu(idToken, user, id=None):
             if reference:
                 response = requests.get(f"{firestore_url}/v1beta1/{reference}", headers=firestore_header)
                 document = response.json().get("fields", {})
+                path = response.json().get("name", {})
 
                 # Assuming the response contains 'name' and 'price' fields, append them to menu
                 menu["name"].append(document.get("name", {}).get("stringValue", ""))
                 menu["price"].append(document.get("price", {}).get("integerValue", 0))
+                menu["path"].append(path)
 
     
         # for ref in ref["referenceValue"]:
@@ -129,12 +131,12 @@ def log_menu(idToken, user, menu):
         },
         "menu":{
             "arrayValue":{
-                "values":[{"referenceValue": x["name"]} for x in menu]
+                "values":[{"referenceValue": x} for x in menu]
                 }
             }
         }
     }
-    response = requests.post(f"{firestore_url}/v1beta1/{parents}/{collectionId}", data=json.dumps(data), headers=firestore_header)
+    response = requests.patch(f"{firestore_url}/v1beta1/{parents}/{collectionId}/{str(datetime.now(timezone(timedelta(hours=7))))}", data=json.dumps(data), headers=firestore_header)
     print(response.json())
 
 # def edit_menu(id, id_menu, user):

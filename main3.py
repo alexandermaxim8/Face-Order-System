@@ -87,6 +87,43 @@ class Item(BaseModel):
     user: str
     token: str
  
+
+def face_recog(img, user):
+    face_locations = FR.face_locations(img, model='hog')
+    test_faces = FR.face_encodings(face_image = img, known_face_locations=face_locations,
+                                     num_jitters=50, model='large')
+    print(f"test_faces: {len(test_faces)}")
+    if len(test_faces) >0:  # Jika ada wajah terdeteksi
+        test_face = test_faces[0]
+    else:
+        print("No face detected in the image")
+ 
+    with open(f'{user}.pkl', 'rb') as f:
+        print("user: ", user)
+        data = pickle.load(f)
+        id = data["id"]
+        known_faces = data["known_face"]
+    try:
+       # matches=FR.compare_faces(known_face, face_encoding, tolerance=0.3)
+       # print("matches: ", matches)
+       face_distances= FR.face_distance(known_faces, test_face)
+       best_match_index = np.argmin(face_distances)
+       print(f"best_match_index: {best_match_index}")
+    except Exception as e:
+        print(f"Compare error: {str(e)}")
+        return {"error": str(e)}
+    
+    if face_distances[best_match_index] < 0.35: # jarak ecludian 
+        print(f"id: {id}")
+        id = id[best_match_index]
+        id=int(id)
+        print(f"id: {id}, distance: {face_distances[best_match_index]:.2f}")
+        return {"found": True, "id": id}
+    else:
+        print(f"id: unknown, distance: {face_distances[best_match_index]:.2f}")
+        return {"found": False}
+
+
 @app.get("/")
 async def root():
     return {"Hello": "Mundo"}
@@ -113,6 +150,9 @@ async def train(item: Item):  # Use Body to indicate raw byte data
         except Exception as e:
             print(f"Error in converting image: {str(e)}")
             return {"error": f"Error in converting image: {str(e)}"}
+        
+        if face_recog(img, user)["found"]:
+            return {"status": "Training terminated, similar face data had been registered!"}
 
         # Get face encodings from the image
         try:
@@ -171,44 +211,22 @@ async def predict(item: Item):
     image_bytes = base64.b64decode(image_data)
     img = Image.open(io.BytesIO(image_bytes))
     img = np.array(img)
-    face_locations = FR.face_locations(img, model='hog')
-    test_faces = FR.face_encodings(face_image = img, known_face_locations=face_locations,
-                                     num_jitters=50, model='large')
-    print(f"test_faces: {len(test_faces)}")
-    if len(test_faces) >0:  # Jika ada wajah terdeteksi
-        test_face = test_faces[0]
-    else:
-        print("No face detected in the image")
- 
-    with open(f'{user}.pkl', 'rb') as f:
-        print("user: ", user)
-        data = pickle.load(f)
-        id = data["id"]
-        known_faces = data["known_face"]
-    try:
-       # matches=FR.compare_faces(known_face, face_encoding, tolerance=0.3)
-       # print("matches: ", matches)
-       face_distances= FR.face_distance(known_faces, test_face)
-       best_match_index = np.argmin(face_distances)
-       print(f"best_match_index: {best_match_index}")
-    except Exception as e:
-        print(f"Compare error: {str(e)}")
-        return {"error": str(e)}
-    
-    if face_distances[best_match_index] < 0.35: # jarak ecludian 
-        print(f"id: {id}")
-        id = id[best_match_index]
-        id=int(id)
-        print(f"id: {id}, distance: {face_distances[best_match_index]:.2f}")
-        print("token: ", token)
-        print("user: ", user)
-        print("id: ", id)
+    # print("token: ", token)
+    # print("user: ", user)
+    # print("id: ", id)
 
+    found = face_recog(img, user)
+    if found["found"]:
+        id = found["id"]
         menu = fb.get_menu(token, user, id)
+        print(menu)
         return {"match_id": id, "menu": menu}
+
     else:
-        print(f"id: unknown, distance: {face_distances[best_match_index]:.2f}")
         return {"error": "No match found"}
+    
+if __name__ == "__main__":
+    uvicorn.run(app, host="127.0.0.1", port=8000)
 
     # if True in matches:
     #     id = id[matches.index(True)]

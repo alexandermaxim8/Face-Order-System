@@ -25,7 +25,7 @@ known_names = []
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Construct the full path to the encodings file
-encodings_file = os.path.join(script_dir, 'encodings_2.pkl')
+encodings_file = os.path.join(script_dir, 'encodings_hitamputih_part2.pkl')
 
 # Memuat encoding wajah dan nama dari file pickle
 with open(encodings_file, 'rb') as f:
@@ -35,15 +35,13 @@ with open(encodings_file, 'rb') as f:
 
 # Variabel untuk kontrol frekuensi pemrosesan
 process_this_frame = True
-frame_skip = 1  # Proses setiap 2 frame
+frame_skip = 2  # Proses setiap 2 frame
 frame_count = 0
 
 # Variabel untuk menyimpan hasil pengenalan sebelumnya
 prev_face_locations = []
 prev_face_names = []
-# Fungsi untuk mengonversi face distance menjadi nilai kepercayaan
-pembagi=0.6
-
+pembagi=0.5
 while True:
     ret, frame = cam.read()
     if not ret:
@@ -51,31 +49,39 @@ while True:
 
     frame_count += 1
 
-    # Ubah ukuran frame untuk mempercepat proses
-    small_frame = cv2.resize(frame, (0, 0), fx=pembagi, fy=pembagi)
+    # Konversi frame ke grayscale
+    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    gray_frame= cv2.equalizeHist(gray_frame)
 
-    # Konversi ke RGB (face_recognition menggunakan format RGB)
-    rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+    # # Ubah ukuran frame untuk mempercepat proses
+    small_gray_frame = cv2.resize(gray_frame, (0, 0), fx=pembagi, fy=pembagi)
 
     if frame_count % frame_skip == 0:
-        # Hanya proses setiap 'frame_skip' frame
-        # Deteksi lokasi wajah dan encoding dalam frame saat ini
-        face_locations = FR.face_locations(rgb_small_frame, model='hog')
-        print("face_locations",np.shape(face_locations))
-        face_encodings = FR.face_encodings(rgb_small_frame, face_locations)
-        print("face_encodings",np.shape(face_encodings))
+        # Deteksi lokasi wajah dalam frame grayscale
+        face_locations = FR.face_locations(small_gray_frame, model='hog')
+        print("face_locations", np.shape(face_locations))
 
+        # Untuk encoding wajah, kita perlu gambar RGB
+        # Konversi frame kecil ke RGB
+        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+        rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+
+        # Dapatkan encoding wajah
+        face_encodings = FR.face_encodings(rgb_small_frame, face_locations)
+        print("face_encodings", np.shape(face_encodings))
         face_names = []
-        for face_encoding in face_encodings: # loop bila terdapat lebih dari satu wajah orang 
+        for face_encoding in face_encodings:
+            print("face_encoding: ", face_encoding)
             # Bandingkan wajah dengan encoding yang dikenal
             matches = FR.compare_faces(known_encodings, face_encoding, tolerance=0.4)
+            print("matches", matches)
             name = "Unknown"
 
             # Menggunakan jarak terkecil ke encoding yang dikenal
             face_distances = FR.face_distance(known_encodings, face_encoding)
             best_match_index = np.argmin(face_distances)
             
-            if face_distances[best_match_index] < 0.4: # Jika jarak terkecil kurang dari 0.4, maka wajah dikenali
+            if face_distances[best_match_index] < 0.45:
                 name = known_names[best_match_index]
                 name += f' ({face_distances[best_match_index]:.2f})'  # Menambahkan nilai kepercayaan pada nama
             else:
@@ -93,9 +99,8 @@ while True:
         face_locations = prev_face_locations
         face_names = prev_face_names
 
-    # Menampilkan hasil
+    # Menampilkan hasil pada frame grayscale
     for (top, right, bottom, left), name in zip(face_locations, face_names):
-        print("berhasil")
         # Skala kembali lokasi wajah karena kita mengubah ukuran frame sebelumnya
         top /= pembagi
         right /= pembagi
@@ -105,15 +110,16 @@ while True:
         right = int(right)
         bottom = int(bottom)
         left = int(left)
-        # Gambar kotak di sekitar wajah
-        cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
+
+        # Gambar kotak di sekitar wajah pada frame grayscale
+        cv2.rectangle(gray_frame,(left, top), (right, bottom), (255), 2)
 
         # Tampilkan nama di bawah kotak
-        cv2.rectangle(frame, (left, bottom - 20), (right, bottom), (0, 255, 0), cv2.FILLED)
-        cv2.putText(frame, name, (left + 2, bottom - 5), font, pembagi, (0, 0, 0), 1)
+        cv2.rectangle(gray_frame, (left, bottom - 20), (right, bottom), (255), cv2.FILLED)
+        cv2.putText(gray_frame, name, (left + 2, bottom - 5), font, pembagi, (0, 0, 0), 1)
 
-    # Tampilkan frame hasil
-    cv2.imshow('Face Recognition', frame)
+    # Tampilkan frame hasil dalam grayscale
+    cv2.imshow('Face Recognition', gray_frame)
 
     # Keluar jika tombol 'q' ditekan
     if cv2.waitKey(1) & 0xFF == ord('q'):
