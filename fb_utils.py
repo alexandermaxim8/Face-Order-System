@@ -40,10 +40,13 @@ def generate_id(idToken, user):
     collectionId = "pelanggan"
     response = requests.get(f"{firestore_url}/v1/{parents}/{collectionId}", headers=firestore_header)
     json_response = response.json()
-    #print(json_response)
+    print(json_response)
+    if not json_response:
+        print("Empty JSON response!")
+        return 1
     ids = [int(doc["fields"]["id"]["integerValue"]) for doc in json_response["documents"]]
     print("ids sekarang: ", ids)
-    r = int(np.max(ids))+1 if ids else 1
+    r = int(np.max(ids))+1
     print("r: ", r)
     return r
 
