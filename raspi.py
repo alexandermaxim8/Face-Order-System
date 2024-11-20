@@ -24,10 +24,10 @@ auth = f'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?k
 auth_headers = {"Content-Type": "application/json"}
 
 
-# email = "admin@gmail.com"
-# password = "admin12345"
-email = "alexandermaxim8@gmail.com"
-password = "alex12345"
+email = "admin@gmail.com"
+password = "admin12345"
+# email = "alexandermaxim8@gmail.com"
+# password = "alex12345"
 
 # data = {"email": email, "password": password, "returnSecureToken": True}
 # try:
@@ -194,6 +194,9 @@ def pengambilan_gambar():
                     cv2.imwrite("captured_frame.jpg", frame)
                     liveness = True
                     break
+            else:
+                cv2.putText(frame, 'Tekan huruf "c"', (50, 100), font,
+                            0.7, (0, 0, 255), 2)
 
         cv2.putText(frame, f'Kedipan: {blink_counter}', (10, 30),
                     font, 0.7, (0, 0, 255), 2)
@@ -222,8 +225,8 @@ def order():
         image_base64 = base64.b64encode(image_bytes).decode('utf-8')
         headers = {'Content-Type': 'application/json'}
         face = {"face": image_base64, "user": email, "token":idToken}
-        # response = requests.post("http://127.0.0.1:8000/predict", data=json.dumps(face), headers=headers) 
-        response = requests.post("https://98a1-147-135-15-16.ngrok-free.app/predict", data=json.dumps(face), headers=headers) 
+        response = requests.post("http://127.0.0.1:8000/predict", data=json.dumps(face), headers=headers) 
+        #response = requests.post("https://98a1-147-135-15-16.ngrok-free.app/predict", data=json.dumps(face), headers=headers) 
         print("berhasil request")
         price = 0
         total_price = 0
@@ -304,8 +307,8 @@ def register():
 
 
         face = {"menu": selected_menu, "face": image_base64, "user": email, "token":idToken}
-        # response = requests.post("http://127.0.0.1:8000/train", data=json.dumps(face), headers=headers) 
-        response = requests.post("https://98a1-147-135-15-16.ngrok-free.app/train", data=json.dumps(face), headers=headers) 
+        response = requests.post("http://127.0.0.1:8000/train", data=json.dumps(face), headers=headers) 
+       # response = requests.post("https://98a1-147-135-15-16.ngrok-free.app/train", data=json.dumps(face), headers=headers) 
         response.raise_for_status()
         print("Registration response:", response.text)
 
