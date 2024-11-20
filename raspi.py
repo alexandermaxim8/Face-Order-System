@@ -77,6 +77,67 @@ def calculate_ear(eye):
     return ear
 
 
+# def pengambilan_gambar():
+
+#     a = time.time()
+#     video = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+#     video.set(cv2.CAP_PROP_FRAME_WIDTH, 360)
+#     video.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
+#     video.set(cv2.CAP_PROP_FPS, 20)
+#     video.set(cv2.CAP_PROP_BUFFERSIZE, 3)
+#     video.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+
+#     print("Waktu membuka kamera:", time.time() - a)
+#     print("WIDTH, HEIGHT, FPS:", video.get(cv2.CAP_PROP_FRAME_WIDTH),
+#           video.get(cv2.CAP_PROP_FRAME_HEIGHT), video.get(cv2.CAP_PROP_FPS))
+
+#     EAR_THRESHOLD = 0.21
+#     blink_counter =  0
+#     liveness = sudah_pencet = False
+#     font = cv2.FONT_HERSHEY_SIMPLEX
+
+#     while True:
+#         ret, frame = video.read()
+#         if not ret:
+#             break
+
+#         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+#         faces = detector(gray)
+
+
+#         if sudah_pencet:
+#             cv2.putText(frame, 'Silahkan kedip', (50, 100), font,
+#                         0.7, (0, 0, 255), 2)
+#             for face in faces:
+#                 shape = predictor(gray, face)
+#                 coords = np.array([[p.x, p.y] for p in shape.parts()])
+#                 left_eye, right_eye = coords[36:42], coords[42:48]
+#                 ear = (calculate_ear(left_eye) + calculate_ear(right_eye)) / 2.0
+
+#                 if ear < EAR_THRESHOLD:
+#                     blink_counter += 1
+#                 if blink_counter > 0 and ear> 0.33:
+#                     print("Blink detected!")
+#                     cv2.imwrite("captured_frame.jpg", frame)
+#                     liveness = True
+#                     break
+
+
+#         cv2.putText(frame, f'Kedipan: {blink_counter}', (10, 30),
+#                     font, 0.7, (0, 0, 255), 2)
+#         cv2.imshow("Capturing", frame)
+        
+#         key = cv2.waitKey(1) & 0xFF
+#         if key == ord('c'):
+#             sudah_pencet = True
+
+#         elif key == ord('q') or liveness:
+#             break
+
+#     video.release()
+#     cv2.destroyAllWindows()
+#     return frame
+
 def pengambilan_gambar():
 
     a = time.time()
@@ -92,7 +153,7 @@ def pengambilan_gambar():
           video.get(cv2.CAP_PROP_FRAME_HEIGHT), video.get(cv2.CAP_PROP_FPS))
 
     EAR_THRESHOLD = 0.21
-    blink_counter =  0
+    blink_counter = 0
     liveness = sudah_pencet = False
     font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -104,11 +165,23 @@ def pengambilan_gambar():
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = detector(gray)
 
+        if len(faces) > 0:
+            # Menghitung area dari setiap wajah dan memilih yang terbesar
+            face_areas = [(face.right() - face.left()) * (face.bottom() - face.top()) for face in faces]
+            max_area_index = face_areas.index(max(face_areas))
+            face = faces[max_area_index]
 
-        if sudah_pencet:
-            cv2.putText(frame, 'Silahkan kedip', (50, 100), font,
-                        0.7, (0, 0, 255), 2)
-            for face in faces:
+            # Menggambar bounding box di sekitar wajah terbesar
+            x1 = face.left()
+            y1 = face.top()
+            x2 = face.right()
+            y2 = face.bottom()
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+            if sudah_pencet:
+                cv2.putText(frame, 'Silahkan kedip', (50, 100), font,
+                            0.7, (0, 0, 255), 2)
+
                 shape = predictor(gray, face)
                 coords = np.array([[p.x, p.y] for p in shape.parts()])
                 left_eye, right_eye = coords[36:42], coords[42:48]
@@ -116,17 +189,16 @@ def pengambilan_gambar():
 
                 if ear < EAR_THRESHOLD:
                     blink_counter += 1
-                if blink_counter > 0 and ear> 0.33:
+                if blink_counter > 0 and ear > 0.33:
                     print("Blink detected!")
                     cv2.imwrite("captured_frame.jpg", frame)
                     liveness = True
                     break
 
-
         cv2.putText(frame, f'Kedipan: {blink_counter}', (10, 30),
                     font, 0.7, (0, 0, 255), 2)
         cv2.imshow("Capturing", frame)
-        
+
         key = cv2.waitKey(1) & 0xFF
         if key == ord('c'):
             sudah_pencet = True
@@ -137,7 +209,6 @@ def pengambilan_gambar():
     video.release()
     cv2.destroyAllWindows()
     return frame
-
 
 
 
