@@ -217,6 +217,7 @@ async def predict(item: Item):
 
     found = face_recog(img, user)
     if found["found"]:
+        print("found: ", found)
         id = found["id"]
         menu = fb.get_menu(token, user, id)
         print(menu)
