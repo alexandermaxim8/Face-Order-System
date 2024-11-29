@@ -42,25 +42,90 @@ def init_firebase(email, password):
         else:
             return {"Error": f"Authentication failed with message: {error_message}"}
 
-def generate_id(idToken, user):
-    print("generate_id function") 
+# def generate_id(idToken, user):
+#     print("generate_id function") 
+#     firestore_header = {
+#         "Authorization": f"Bearer {idToken}",
+#         "Content-Type": "application/json"
+#     }
+#     parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}'
+#     collectionId = "pelanggan"
+#     response = requests.get(f"{firestore_url}/v1/{parents}/{collectionId}", headers=firestore_header)
+#     json_response = response.json()
+#     print(json_response)
+#     if not json_response:
+#         print("Empty JSON response!")
+#         return 1
+#     ids = [int(doc["fields"]["id"]["integerValue"]) for doc in json_response["documents"]]
+#     print("ids sekarang: ", ids)
+#     r = int(np.max(ids))+1
+#     print("r: ", r)
+#     return r
+
+
+# def generate_id(idToken, user, coll):
+#     print("generate_id function") 
+#     firestore_header = {
+#         "Authorization": f"Bearer {idToken}",
+#         "Content-Type": "application/json"
+#     }
+#     parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}'
+#     response = requests.get(f"{firestore_url}/v1/{parents}/{coll}", headers=firestore_header)
+#     json_response = response.json()
+#     print("JSON Response:", json_response)  # Debug response
+
+#     if "documents" not in json_response:
+#         print("No documents found!")
+#         return 1  # Return default ID if no documents exist
+    
+#     try:
+#         ids = [int(doc["fields"]["id"]["integerValue"]) for doc in json_response["documents"]]
+#         print("Current IDs:", ids)
+#         r = max(ids) + 1
+#     except KeyError as e:
+#         print("KeyError:", e)
+#         print("Check the structure of your Firestore documents.")
+#         return 1
+#     except ValueError as e:
+#         print("ValueError:", e)
+#         print("Ensure 'id' field contains valid integer values.")
+#         return 1
+    
+#     print("Next ID:", r)
+#     return r
+
+import requests
+
+def generate_id(idToken, user, coll):
+    # Header autentikasi
     firestore_header = {
         "Authorization": f"Bearer {idToken}",
         "Content-Type": "application/json"
     }
-    parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}'
-    collectionId = "pelanggan"
-    response = requests.get(f"{firestore_url}/v1/{parents}/{collectionId}", headers=firestore_header)
-    json_response = response.json()
-    print(json_response)
-    if not json_response:
-        print("Empty JSON response!")
-        return 1
-    ids = [int(doc["fields"]["id"]["integerValue"]) for doc in json_response["documents"]]
-    print("ids sekarang: ", ids)
-    r = int(np.max(ids))+1
-    print("r: ", r)
-    return r
+
+    # URL koleksi
+    project_id = "your-project-id"  # Ganti dengan ID proyek Firebase Anda
+    database_id = "(default)"  # Default database
+    parent_path = f"users/{user}/{coll}"  # Path ke koleksi menu
+    firestore_url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/{database_id}/documents/{parent_path}"
+
+    # Permintaan GET untuk mendapatkan dokumen koleksi
+    response = requests.get(firestore_url, headers=firestore_header)
+    response=response.json() 
+    if response.status_code == 200:
+        # Parsing hasil respons
+        documents = response.json().get("documents", [])
+        if not documents:
+            print("No documents found in the collection!")
+            return
+
+        # Ekstrak ID dokumen dari "name"
+        ids = [doc["name"].split("/")[-1] for doc in documents]
+        print("Menu IDs:", ids)
+        return ids
+    else:
+        print(f"Error: {response.status_code}, {response.text}")
+        return None
 
 
 def add_user(idToken, id, menu, user):
@@ -85,7 +150,6 @@ def add_user(idToken, id, menu, user):
     }
     response = requests.patch(f"{firestore_url}/v1beta1/{parents}/{collectionId}/{id}", data=json.dumps(data), headers=firestore_header)
     print(response.json())
-
 
 def get_menu(idToken, user, id=None):
     # print("\nget_menu function")
@@ -124,7 +188,6 @@ def get_menu(idToken, user, id=None):
         #     # menu["name"].append(response.json()["documents"]["fields"]["name"]["stringValue"])
         #     # menu["price"].append(response.json()["documents"]["fields"]["price"]["integerValue"])
         #     menu.append(response.json()["documents"])
-
     else:
         parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}'
         collectionId = "menu"
@@ -258,7 +321,7 @@ def add_menu(menu_name, menu_price, idToken, user):
     }
 
     # URL untuk membuat atau memperbarui dokumen dengan ID tertentu
-    url = f"{firestore_url}/v1/{parent}/{10}"
+    url = f"{firestore_url}/v1/{parent}/{generate_id(idToken, user, 'menu')}"
 
     # Mengirim permintaan PATCH untuk menambahkan atau memperbarui dokumen
     response = requests.patch(url, data=json.dumps(data), headers=firestore_header)
@@ -269,40 +332,6 @@ def add_menu(menu_name, menu_price, idToken, user):
     else:
         print(f"Error saat menambahkan menu: {response.text}")
         return {"success": False, "error": response.json()}
-    
-
-
-
-def update_menu(idToken, user, menu_id, new_name, new_price):
-    print(f"Updating menu ID: {menu_id} with name: {new_name}, price: {new_price}")
-    firestore_header = {
-        "Authorization": f"Bearer {idToken}",
-        "Content-Type": "application/json"
-    }
-    
-    # Path ke dokumen menu
-    document_path = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/menu/{menu_id}'
-    
-    # Data yang akan diperbarui
-    update_data = {
-        "fields": {
-            "name": {"stringValue": new_name},
-            "price": {"integerValue": str(new_price)}
-        }
-    }
-
-    # Permintaan PATCH untuk memperbarui dokumen
-    response = requests.patch(f"{firestore_url}/v1/{document_path}", data=json.dumps(update_data), headers=firestore_header)
-    
-    # Cek hasil respons
-    if response.status_code == 200:
-        print(f"Menu ID {menu_id} updated successfully.")
-        return {"success": True, "menu_id": menu_id}
-    else:
-        print(f"Error updating menu ID {menu_id}: {response.text}")
-        return {"success": False, "error": response.json()}
-    
-
 
 # def add_menu(menu_name, menu_price, idToken, user):
 #     print("menu_name", menu_name)
