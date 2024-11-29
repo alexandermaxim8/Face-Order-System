@@ -38,8 +38,6 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
     else:
         json_response = st.session_state.json_response
 
-    # Mengambil data 10 pesanan terakhir
-    #json_response = fb.get_recent_order(idToken, user, limit=10)
 
     if "document" in json_response[0]:
         orders = []
