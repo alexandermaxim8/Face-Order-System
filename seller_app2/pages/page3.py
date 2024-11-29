@@ -4,7 +4,7 @@ from datetime import datetime
 from navigation import make_sidebar
 import fb_utils2 as fb
 
-# Fungsi untuk memeriksa status login
+# saat refresh website, maka akan kembali ke halaman login
 def check_login():
     if 'logged_in' not in st.session_state or not st.session_state['logged_in']:
         st.warning("Anda belum login. Mengarahkan ke halaman login...")
