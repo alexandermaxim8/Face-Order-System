@@ -15,6 +15,19 @@ def check_login():
 # Panggil fungsi ini di awal setiap halaman
 check_login()
 
+
+# Sembunyikan navigasi sidebar (opsional)
+hide_navigation_style = """
+    <style>
+    [data-testid="stSidebarNav"] > ul:first-child {
+        display: none;
+    }
+    </style>
+"""
+st.markdown(hide_navigation_style, unsafe_allow_html=True)
+
+
+
 # Memanggil fungsi untuk membuat sidebar
 make_sidebar()
 
