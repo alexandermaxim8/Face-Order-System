@@ -5,7 +5,8 @@ def make_sidebar():
     with st.sidebar:
         if st.session_state.logged_in:
             st.page_link("pages/page1.py", label="Sales Analytics", icon="📈")
-            st.page_link("pages/page2.py", label="More Secret Stuff", icon="🕵️")
+            st.page_link("pages/page2.py", label="Menubase", icon="🍔")
+            st.page_link("pages/page3.py", label="Pesanan", icon="📜")
 
             st.write("")
             st.write("")
