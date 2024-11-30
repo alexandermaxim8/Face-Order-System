@@ -15,7 +15,6 @@ st.markdown(hide_navigation_style, unsafe_allow_html=True)
 make_sidebar()
 
 st.title("🍔Menubase")
-st.header("New Menu➕", divider="orange")
 
 # Cek apakah pengguna sudah login
 if 'idToken' in st.session_state and 'email' in st.session_state:
@@ -23,7 +22,7 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
     user = st.session_state['email']
         
     # Form untuk menambahkan menu
-    # st.header("Tambah Menu Makanan Baru")
+    st.header("New Menu➕", divider="orange")
     menu_name = st.text_input("Nama Menu:")
     menu_price = st.number_input("Harga Menu:", min_value=0)
 
@@ -57,6 +56,22 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
                 st.error(f"Gagal memperbarui menu: {result.get('error')}")
         else:
             st.error("Silakan isi nama baru atau harga baru untuk menu yang dipilih.")
+
+    # st.header("Delete Menu⭕", divider="red")
+    # # menu_list = get_menu(idToken, user)  # Ambil semua menu dari Firebase
+    # # menu_options = {doc['fields']['name']['stringValue']: doc['name'].split('/')[-1] for doc in menu_list}
+
+    # selected_menu_del = st.selectbox("Menu to be deleted:", options=menu_options.keys())
+    # if st.button("Deleted"):
+    #     if selected_menu_del:
+    #         menu_id = menu_options[selected_menu_del]
+    #         result = delete_menu(idToken, user, menu_id)
+    #         if result.get('success'):
+    #             st.success(f"Menu {selected_menu_del} has successfully been deleted")
+    #         else:
+    #             st.error(f"Failed to delete menu: {result.get('error')}")
+    #     else:
+    #         st.error("Please select menu to be deleted")
 
 else:
     st.error("Anda belum login. Silakan login terlebih dahulu.")

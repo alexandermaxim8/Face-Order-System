@@ -43,7 +43,7 @@ def init_firebase(email, password):
             return {"Error": f"Authentication failed with message: {error_message}"}
 
 def generate_id(idToken, user, menu=False):
-    print("generate_id function") 
+    #print("generate_id function") 
     firestore_header = {
         "Authorization": f"Bearer {idToken}",
         "Content-Type": "application/json"
@@ -53,13 +53,13 @@ def generate_id(idToken, user, menu=False):
         collectionId = "pelanggan"
         response = requests.get(f"{firestore_url}/v1/{parents}/{collectionId}", headers=firestore_header)
         json_response = response.json()
-        print(json_response)
+        #print(json_response)
         if not json_response:
             print("Empty JSON response!")
             return 1
         ids = [int(doc["fields"]["id"]["integerValue"]) for doc in json_response["documents"]]
     else:
-        parents = f"projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/"
+        parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/'
         query_body = {
             "structuredQuery": {
                 "from": [{"collectionId": "menu"}]
@@ -70,9 +70,9 @@ def generate_id(idToken, user, menu=False):
         for doc in json_response:
             ids = [int(doc["document"]["name"].split('/')[-1]) for doc in json_response]
         # ids = [int(doc["fields"]["id"]["integerValue"]) for doc in json_response["documents"]]
-    print("ids sekarang: ", ids)
+    #print("ids sekarang: ", ids)
     r = int(np.max(ids))+1
-    print("r: ", r)
+    #print("r: ", r)
     return r
 
 def add_user(idToken, id, menu, user):
@@ -96,7 +96,7 @@ def add_user(idToken, id, menu, user):
         }
     }
     response = requests.patch(f"{firestore_url}/v1beta1/{parents}/{collectionId}/{id}", data=json.dumps(data), headers=firestore_header)
-    print(response.json())
+   # print(response.json())
 
 def get_menu(idToken, user, id=None):
     # print("\nget_menu function")
@@ -111,9 +111,9 @@ def get_menu(idToken, user, id=None):
         menu = {"name":[], "price":[], "path":[]}
         name = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/pelanggan/{id}'
         response = requests.get(f"{firestore_url}/v1beta1/{name}", headers=firestore_header)
-        print("response: ", response.json())
+        #print("response: ", response.json())
         ref = response.json()["fields"]["menu"]["arrayValue"]["values"]
-        print("ref", ref)
+        #print("ref", ref)
 
         # Loop through each item in ref, which should be a list of dictionaries
         for ref_item in ref:
@@ -141,7 +141,7 @@ def get_menu(idToken, user, id=None):
         response = requests.get(f"{firestore_url}/v1beta1/{parents}/{collectionId}", headers=firestore_header)
         json_response = response.json()
         menu = json_response["documents"]
-    print("menu: ", menu)
+    #print("menu: ", menu)
     return menu
 
 def log_menu(idToken, user, menu, id):
@@ -152,12 +152,13 @@ def log_menu(idToken, user, menu, id):
     parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}'
     collectionId = "sales"
 
-    utc7_time = str(datetime.now(timezone(timedelta(hours=7))).isoformat())
+    utc7_time = datetime.now(timezone(timedelta(hours=7)))
+    utc7_time_iso = str(utc7_time.isoformat())
     data = {
     "fields": {
         "datetime": {
             # "timestampValue":f'{datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}'
-            "timestampValue":utc7_time
+            "timestampValue":utc7_time_iso
         },
         "menu":{
             "arrayValue":{
@@ -166,12 +167,15 @@ def log_menu(idToken, user, menu, id):
             },
         "id":{
             "integerValue": str(id)
+            },
+        "done": {
+            "booleanValue": "false"
             }
         }
     }
     # response = requests.patch(f"{firestore_url}/v1/{parents}/{collectionId}/{str(datetime.now(timezone(timedelta(hours=7))))}", data=json.dumps(data), headers=firestore_header)
-    response = requests.patch(f"{firestore_url}/v1/{parents}/{collectionId}/{utc7_time}", data=json.dumps(data), headers=firestore_header)
-    print(response.json())
+    response = requests.patch(f"{firestore_url}/v1/{parents}/{collectionId}/{utc7_time.strftime("%Y-%m-%d %H:%M:%S")}", data=json.dumps(data), headers=firestore_header)
+    #print(response.json())
 
 def convert_utc7(date_time):
     utc_time = datetime.fromisoformat(date_time.replace("Z", "+00:00"))
@@ -187,7 +191,7 @@ def get_sales(idToken, user, start, end):
     # date = []
     date_list = [(start + timedelta(days=i)).strftime("%Y-%m-%d") for i in range((end - start).days + 1)]
     json_response = query_log(idToken, user, start, end)
-    print(json_response)
+   # print(json_response)
     total = [0 for i in range(len(date_list))]
     if "document" in json_response[0]:
         for doc in json_response:
@@ -200,8 +204,8 @@ def get_sales(idToken, user, start, end):
                 if doc["document"]["fields"]["datetime"]["timestampValue"] == date:
                     total[i] = total[i] + sum([int(x["mapValue"]["fields"]["price"]["integerValue"]) for x in doc["document"]["fields"]["menu"]["arrayValue"]["values"]])
 
-    print(date_list)
-    print(total)
+    #print(date_list)
+    #print(total)
     return date_list, total
 
 def get_menuranks(idToken, user, start, end):
@@ -223,7 +227,7 @@ def query_log(idToken, user, start, end):
         "Content-Type": "application/json"
     }
 
-    parents = f"projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/"
+    parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/'
     query_body = {
         "structuredQuery": {
             "from": [{"collectionId": "sales"}],
@@ -302,17 +306,58 @@ def update_menu(idToken, user, menu_id, new_name, new_price):
             "price": {"integerValue": str(new_price)}
         }
     }
+    # Permintaan PATCH untuk memperbarui dokumen
+    response = requests.patch(f"{firestore_url}/v1/{document_path}", data=json.dumps(update_data), headers=firestore_header)
+    
+    # Cek hasil respons
+    if response.status_code == 200:
+        print(f"Menu ID {menu_id} updated successfully.")
+        return {"success": True, "menu_id": menu_id}
+    else:
+        print(f"Error updating menu ID {menu_id}: {response.text}")
+        return {"success": False, "error": response.json()}
 
-# def edit_menu(id, id_menu, user):
-#     menu = []
-#     for i in id_menu:
-#         obj = user.collection("menu").where("id", "==", i).stream()
-#         for doc in obj:
-#             menu.append(doc.to_dict())
-#     user.collection("pelanggan").document(id).update({"menu": menu})
 
-# def add_menu(menu, price, user):
-#     user.collection("menu").add({
-#         "name":menu,
-#         "price":price
-#     })
+def get_recent_order(idToken, user, update=None, limit=10):
+    firestore_header = {
+        "Authorization": f"Bearer {idToken}",
+        "Content-Type": "application/json"
+    }
+
+    if not update is None:
+        for date_time in update:
+            document_path = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/sales/{date_time}'
+            data = {
+                "fields": {
+                    "done": {"booleanValue": True}
+                }
+            }
+            response = requests.patch(f"https://firestore.googleapis.com/v1/{document_path}?updateMask.fieldPaths=done", headers=firestore_header, data=json.dumps(data))
+            print(response.json())
+            if response.status_code != 200:
+                break       
+
+    parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/'
+    query_body = {
+        "structuredQuery": {
+            "from": [{"collectionId": "sales"}],
+            "where": {
+                "fieldFilter": {
+                    "field": {"fieldPath": "done"},
+                    "op": "EQUAL",
+                    "value": {"booleanValue": "false"}
+                }
+            },
+            "orderBy": [{
+                "field": {"fieldPath": "datetime"},
+                "direction": "DESCENDING"
+            }],
+            "limit": limit
+        }
+    }
+
+    response = requests.post(f"{firestore_url}/v1/{parents}:runQuery", headers=firestore_header, data=json.dumps(query_body))
+    json_response = response.json()
+    # print(json_response)
+
+    return json_response
