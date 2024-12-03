@@ -79,8 +79,8 @@ def calculate_ear(eye):
 def pengambilan_gambar():
     start_time = time.time()
     video = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    video.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
-    video.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    video.set(cv2.CAP_PROP_FRAME_WIDTH, 360)
+    video.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
     video.set(cv2.CAP_PROP_FPS, 20)
     video.set(cv2.CAP_PROP_BUFFERSIZE, 10)
     video.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
