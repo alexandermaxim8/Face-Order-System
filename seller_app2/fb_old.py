@@ -90,7 +90,7 @@ def add_user(idToken, id, menu, user):
         },
         "menu":{
             "arrayValue":{
-                "values":[{"mapValue":{"fields":{"name":{"stringValue": x["fields"]["name"]["stringValue"]}, "price":{"integerValue": x["fields"]["price"]["integerValue"]}, "ref":{"referenceValue": x["name"]}}}} for x in menu]
+                "values":[{"referenceValue": x["name"]} for x in menu]
                 }
             }
         }
@@ -108,82 +108,41 @@ def get_menu(idToken, user, id=None):
         "Content-Type": "application/json"
     }
     if id:
-        menu = {"name":[], "price":[], "reference":[]}
-
+        menu = {"name":[], "price":[], "path":[]}
         name = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/pelanggan/{id}'
         response = requests.get(f"{firestore_url}/v1beta1/{name}", headers=firestore_header)
         #print("response: ", response.json())
-        menu_items = response.json()["fields"]["menu"]["arrayValue"]["values"]
-        
+        ref = response.json()["fields"]["menu"]["arrayValue"]["values"]
+        #print("ref", ref)
 
         # Loop through each item in ref, which should be a list of dictionaries
-        for item in menu_items:
-            fields = item.get('mapValue', {}).get('fields', {})
-            
-            # Ambil 'name', 'price', dan 'ref'
-            name = fields.get('name', {}).get('stringValue', '')
-            price = int(fields.get('price', {}).get('integerValue', 0))
-            reference = fields.get('ref', {}).get('referenceValue', '')
-            
-            # Tambahkan ke list
-            menu["name"].append(name)
-            menu["price"].append(price)
-            menu["reference"].append(reference)
+        for ref_item in ref:
+            # Extract the reference path from each item
+            reference = ref_item.get("referenceValue")
+            if reference:
+                response = requests.get(f"{firestore_url}/v1beta1/{reference}", headers=firestore_header)
+                document = response.json().get("fields", {})
+                path = response.json().get("name", {})
 
+                # Assuming the response contains 'name' and 'price' fields, append them to menu
+                menu["name"].append(document.get("name", {}).get("stringValue", ""))
+                menu["price"].append(document.get("price", {}).get("integerValue", 0))
+                menu["path"].append(path)
+
+    
+        # for ref in ref["referenceValue"]:
+        #     response = requests.get(f"{firestore_url}/v1beta1/{ref}", headers=firestore_header)
+        #     # menu["name"].append(response.json()["documents"]["fields"]["name"]["stringValue"])
+        #     # menu["price"].append(response.json()["documents"]["fields"]["price"]["integerValue"])
+        #     menu.append(response.json()["documents"])
     else:
         parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}'
         collectionId = "menu"
         response = requests.get(f"{firestore_url}/v1beta1/{parents}/{collectionId}", headers=firestore_header)
         json_response = response.json()
         menu = json_response["documents"]
-    print("menu: ", menu)
+    #print("menu: ", menu)
     return menu
-
-# def get_menu(idToken, user, pelanggan_id=None):
-#     firestore_header = {
-#         "Authorization": f"Bearer {idToken}",
-#         "Content-Type": "application/json"
-#     }
-    
-#     menu = {"name": [], "price": [], "path": []}
-    
-#     if pelanggan_id:
-#         # Mendapatkan dokumen pelanggan tertentu
-#         pelanggan_path = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/pelanggan/{pelanggan_id}'
-#         response = requests.get(f"{firestore_url}/v1beta1/{pelanggan_path}", headers=firestore_header)
-        
-#         if response.status_code == 200:
-#             pelanggan_data = response.json()
-#             menu_items = pelanggan_data.get("fields", {}).get("menu", {}).get("arrayValue", {}).get("values", [])
-            
-#             for item in menu_items:
-#                 # Mengambil referensi path untuk tiap menu
-#                 reference_path = item.get("referenceValue")
-#                 if reference_path:
-#                     item_response = requests.get(f"{firestore_url}/v1beta1/{reference_path}", headers=firestore_header)
-                    
-#                     if item_response.status_code == 200:
-#                         item_data = item_response.json().get("fields", {})
-#                         path = item_response.json().get("name", "")
-                        
-#                         # Tambahkan data ke menu
-#                         menu["name"].append(item_data.get("name", {}).get("stringValue", ""))
-#                         menu["price"].append(int(item_data.get("price", {}).get("integerValue", 0)))
-#                         menu["path"].append(path)
-#         else:
-#             print(f"Error: {response.status_code}, {response.text}")
-#     else:
-#         # Jika pelanggan_id tidak diberikan, ambil semua dokumen menu
-#         menu_path = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/menu'
-#         response = requests.get(f"{firestore_url}/v1beta1/{menu_path}", headers=firestore_header)
-        
-#         if response.status_code == 200:
-#             json_response = response.json()
-#             menu = json_response.get("documents", [])
-#         else:
-#             print(f"Error: {response.status_code}, {response.text}")
-    
-#     return menu
 
 def log_menu(idToken, user, menu, id):
     firestore_header = {
@@ -193,13 +152,12 @@ def log_menu(idToken, user, menu, id):
     parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}'
     collectionId = "sales"
 
-    utc7_time = datetime.now(timezone(timedelta(hours=7)))
-    utc7_time_iso = str(utc7_time.isoformat())
+    utc7_time = str(datetime.now(timezone(timedelta(hours=7))).isoformat())
     data = {
     "fields": {
         "datetime": {
             # "timestampValue":f'{datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}'
-            "timestampValue":utc7_time_iso
+            "timestampValue":utc7_time
         },
         "menu":{
             "arrayValue":{
@@ -208,14 +166,11 @@ def log_menu(idToken, user, menu, id):
             },
         "id":{
             "integerValue": str(id)
-            },
-        "done": {
-            "booleanValue": "false"
             }
         }
     }
     # response = requests.patch(f"{firestore_url}/v1/{parents}/{collectionId}/{str(datetime.now(timezone(timedelta(hours=7))))}", data=json.dumps(data), headers=firestore_header)
-    response = requests.patch(f'{firestore_url}/v1/{parents}/{collectionId}/{utc7_time.strftime("%Y-%m-%d %H:%M:%S")}', data=json.dumps(data), headers=firestore_header)
+    response = requests.patch(f"{firestore_url}/v1/{parents}/{collectionId}/{utc7_time}", data=json.dumps(data), headers=firestore_header)
     #print(response.json())
 
 def convert_utc7(date_time):
@@ -347,48 +302,18 @@ def update_menu(idToken, user, menu_id, new_name, new_price):
             "price": {"integerValue": str(new_price)}
         }
     }
-    # Permintaan PATCH untuk memperbarui dokumen
-    response = requests.patch(f"{firestore_url}/v1/{document_path}", data=json.dumps(update_data), headers=firestore_header)
-    
-    # Cek hasil respons
-    if response.status_code == 200:
-        print(f"Menu ID {menu_id} updated successfully.")
-        return {"success": True, "menu_id": menu_id}
-    else:
-        print(f"Error updating menu ID {menu_id}: {response.text}")
-        return {"success": False, "error": response.json()}
 
 
-def get_recent_order(idToken, user, update=None, limit=10):
+def get_recent_order(idToken, user, limit=10):
     firestore_header = {
         "Authorization": f"Bearer {idToken}",
         "Content-Type": "application/json"
     }
 
-    if not update is None:
-        for date_time in update:
-            document_path = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/sales/{date_time}'
-            data = {
-                "fields": {
-                    "done": {"booleanValue": True}
-                }
-            }
-            response = requests.patch(f"https://firestore.googleapis.com/v1/{document_path}?updateMask.fieldPaths=done", headers=firestore_header, data=json.dumps(data))
-            print(response.json())
-            if response.status_code != 200:
-                break       
-
     parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/'
     query_body = {
         "structuredQuery": {
             "from": [{"collectionId": "sales"}],
-            "where": {
-                "fieldFilter": {
-                    "field": {"fieldPath": "done"},
-                    "op": "EQUAL",
-                    "value": {"booleanValue": "false"}
-                }
-            },
             "orderBy": [{
                 "field": {"fieldPath": "datetime"},
                 "direction": "DESCENDING"
@@ -399,6 +324,5 @@ def get_recent_order(idToken, user, update=None, limit=10):
 
     response = requests.post(f"{firestore_url}/v1/{parents}:runQuery", headers=firestore_header, data=json.dumps(query_body))
     json_response = response.json()
-    # print(json_response)
 
     return json_response

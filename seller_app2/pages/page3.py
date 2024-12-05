@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from navigation import make_sidebar
 import fb_utils2 as fb
 
@@ -15,7 +15,6 @@ def check_login():
 # Panggil fungsi ini di awal setiap halaman
 check_login()
 
-
 # Sembunyikan navigasi sidebar (opsional)
 hide_navigation_style = """
     <style>
@@ -26,14 +25,12 @@ hide_navigation_style = """
 """
 st.markdown(hide_navigation_style, unsafe_allow_html=True)
 
-
-
 # Memanggil fungsi untuk membuat sidebar
 make_sidebar()
 
 st.title("🛒 Riwayat Pesanan Terakhir")
 
-
+# Refresh button
 if st.button("🔄 Refresh"):
     # Menandai bahwa data perlu diperbarui
     st.session_state.refresh_data = True
@@ -45,18 +42,30 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
     
     # Mengambil data hanya jika diperlukan (atau jika tombol refresh ditekan)
     if "refresh_data" not in st.session_state or st.session_state.refresh_data:
-        json_response = fb.get_recent_order(idToken, user, limit=10)
+        if "selected_orders" in st.session_state:
+            selected_orders = st.session_state.selected_orders
+        else:
+            selected_orders = pd.DataFrame(columns=["No", "Pilih", "Waktu Pesanan", "Item Pesanan", "Total Harga"])
+        
+        # Pass selected orders to the function if they exist
+        if not selected_orders.empty:
+            selected_order_times = selected_orders["Waktu Pesanan"].tolist()
+            json_response = fb.get_recent_order(idToken, user, selected_order_times, limit=10)
+        else:
+            json_response = fb.get_recent_order(idToken, user, limit=10)
+        
         st.session_state.refresh_data = False  # Reset flag setelah data diambil
         st.session_state.json_response = json_response
     else:
         json_response = st.session_state.json_response
 
-
+    # Display orders if available
     if "document" in json_response[0]:
         orders = []
         for idx, doc in enumerate(json_response, start=1):
             fields = doc["document"]["fields"]
             order_time = datetime.fromisoformat(fields["datetime"]["timestampValue"].replace("Z", "+00:00"))
+            order_time = order_time.astimezone(timezone(timedelta(hours=7)))
             order_items = [item["mapValue"]["fields"]["name"]["stringValue"] for item in fields["menu"]["arrayValue"]["values"]]
             total_price = sum(int(item["mapValue"]["fields"]["price"]["integerValue"]) for item in fields["menu"]["arrayValue"]["values"])
             orders.append({
@@ -85,8 +94,11 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
             height=200  # Sesuaikan tinggi tabel sesuai kebutuhan
         )
 
-        # Menampilkan data pesanan yang dipilih
+        # Menyimpan selected orders ke session_state untuk digunakan saat refresh berikutnya
         selected_orders = edited_df[edited_df["Pilih"]]
+        st.session_state.selected_orders = selected_orders
+
+        # Menampilkan data pesanan yang dipilih
         if not selected_orders.empty:
             st.subheader("Pesanan yang Sudah Selesai")
             st.table(selected_orders.drop(columns=["Pilih"]))
@@ -94,6 +106,7 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
             st.info("Tidak ada pesanan yang dipilih.")
     else:
         st.info("Tidak ada data pesanan yang ditemukan.")
+
 else:
     st.error("Anda belum login. Silakan login terlebih dahulu.")
     st.stop()
