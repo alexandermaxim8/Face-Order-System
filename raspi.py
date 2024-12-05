@@ -8,6 +8,7 @@ import os
 import time
 import numpy as np
 import dlib
+
 config = {
   "apiKey": "AIzaSyAy-FlE4rL-V2BwJ8oZEVhqiMY3qfqcQsA",
   "authDomain": "firestore-despro.firebaseapp.com",
@@ -79,8 +80,8 @@ def calculate_ear(eye):
 def pengambilan_gambar():
     start_time = time.time()
     video = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    video.set(cv2.CAP_PROP_FRAME_WIDTH, 360)
-    video.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
+    video.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
+    video.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     video.set(cv2.CAP_PROP_FPS, 20)
     video.set(cv2.CAP_PROP_BUFFERSIZE, 10)
     video.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
@@ -89,7 +90,8 @@ def pengambilan_gambar():
     print("WIDTH, HEIGHT, FPS:", video.get(cv2.CAP_PROP_FRAME_WIDTH),
           video.get(cv2.CAP_PROP_FRAME_HEIGHT), video.get(cv2.CAP_PROP_FPS))
 
-    EAR_THRESHOLD = 0.21
+    EAR_THRESHOLD = 0.1
+    EAR_buffer = []
     blink_counter = 0
     liveness = False
     sudah_pencet = False
@@ -111,34 +113,48 @@ def pengambilan_gambar():
 
             # Menghitung koordinat dengan margin
             x1 = max(0, face.left() - face.width() // 20)
-            y1 = max(0, face.top() - face.height() // 5)
+            y1 = max(0, face.top()- face.height() // 6)
             x2 = min(frame.shape[1], face.right() + face.width() // 20)
             y2 = min(frame.shape[0], face.bottom() + face.height() // 10)
 
             # Crop frame
             frame_crop = frame[int(y1):int(y2), int(x1):int(x2)]
 
+            shape = predictor(gray, face)
+            coords = np.array([[p.x, p.y] for p in shape.parts()])
+            left_eye = coords[36:42]
+            right_eye = coords[42:48]
+            ear = (calculate_ear(left_eye) + calculate_ear(right_eye)) / 2.0
+            if not sudah_pencet:
+                EAR_buffer.append(ear)
+                EAR_THRESHOLD1 = max(np.mean(EAR_buffer) - 2*np.std(EAR_buffer), 0.13)
+                EAR_THRESHOLD2 = max(np.mean(EAR_buffer) + 0.5*np.std(EAR_buffer), 1.1*EAR_THRESHOLD1)
+                
+            #print(f"{ear} {EAR_THRESHOLD1} {EAR_THRESHOLD2}")
+
+            time.sleep(0.01)
+
             if sudah_pencet:
                 cv2.putText(frame, 'Silahkan kedip', (50, 100), font,
                             0.7, (0, 0, 255), 2)
 
-                shape = predictor(gray, face)
-                coords = np.array([[p.x, p.y] for p in shape.parts()])
-                left_eye = coords[36:42]
-                right_eye = coords[42:48]
-                ear = (calculate_ear(left_eye) + calculate_ear(right_eye)) / 2.0
+                # if ear < 0.05:
+                #     blink_counter += 1
+                # elif blink_counter > 0 and ear > 0.17:
+                if ear < EAR_THRESHOLD1 and blink_counter <1:
+                    blink_counter +=1
 
-                if ear < EAR_THRESHOLD:
-                    blink_counter += 1
-                elif blink_counter > 0 and ear > 0.33:
+                elif blink_counter > 0 and ear >= EAR_THRESHOLD2:
                     print("Kedipan terdeteksi!")
                     cv2.imwrite("captured_frame.jpg", frame)
                     cv2.imwrite("captured_frame_crop.jpg", frame_crop)
                     liveness = True
                     break
+                prev_ear = ear
             else:
                 cv2.putText(frame, 'Tekan huruf "c"', (50, 100), font,
                             0.7, (0, 0, 255), 2)
+                
         else:
             # Jika wajah tidak terdeteksi, gunakan koordinat default
             frame_crop = None
@@ -157,6 +173,7 @@ def pengambilan_gambar():
         key = cv2.waitKey(1) & 0xFF
         if key == ord('c'):
             sudah_pencet = True
+            time.sleep(0.3)
         elif key == ord('q') or liveness:
             break
 
@@ -178,7 +195,8 @@ def order():
         headers = {'Content-Type': 'application/json'}
         face = {"face": image_base64, "user": email, "token":idToken}
         response = requests.post(f"{url}/predict", data=json.dumps(face), headers=headers) 
-        print("berhasil request")
+        print("Rasberry Pi")
+        print("berhasil request prediction")
         price = 0
         total_price = 0
         # Access the menu data
@@ -186,8 +204,10 @@ def order():
             print("No match found. Please register first.")
             return
         menu_data = response.json()["menu"]
-        print("response:", response.json())
-        print("\nmenu_data :", menu_data)
+
+        print("menu_data:", menu_data)
+        # print("response:", response.json())
+        # print("\nmenu_data :", menu_data)
 
         # Loop through each menu item by index
         for i, (name, price_str) in enumerate(zip(menu_data["name"], menu_data["price"])):
@@ -268,6 +288,8 @@ def register():
         if "similar face" in response.json().get("status",""):
             print("sudah diregister, balik ke menu utama")
             return
+        elif "error" in response.json():
+            print(f'An error occured: {response.json()["error"]}')
         else:
             total_price = sum(int(menu[x-1]["fields"]["price"]["integerValue"]) for x in menupick)
             print(f"Total: Rp.{total_price}")
@@ -295,6 +317,9 @@ def manual():
     # menu = json_response["documents"]
 
     menu = fb.get_menu(idToken, email)
+    # print("menu: ", menu)
+    # for k, l in enumerate(menu):
+    #     print("\n\n",l['name'])
     for i, menu_pilihan in enumerate(menu):
         print(f'{i+1}. {menu_pilihan["fields"]["name"]["stringValue"]} - Rp.{menu_pilihan["fields"]["price"]["integerValue"]}')
 
