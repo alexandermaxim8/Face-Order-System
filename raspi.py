@@ -188,7 +188,7 @@ def order():
     response = None
     try:
         img = pengambilan_gambar()
-        # img = cv2.imread("orang3.jpg", cv2.COLOR_BGR2RGB)
+        # img = cv2.imre("orang3.jpg", cv2.COLOR_BGR2RGB)
         retval, buffer = cv2.imencode('.jpg', img)
         image_bytes = buffer.tobytes()
         image_base64 = base64.b64encode(image_bytes).decode('utf-8')
