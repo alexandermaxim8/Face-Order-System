@@ -140,11 +140,11 @@ def get_menu(idToken, user, id=None):
 
 
 def delete_menu_item_from_customer(idToken, user, menu_ref_list, customer_id):
-    print("Deleting menu items from customer.")
-    print("idToken:", idToken)
-    print("user:", user)
-    print("menu_ref_list:", menu_ref_list)
-    print("customer_id:", customer_id)
+    # print("Deleting menu items from customer.")
+    # print("idToken:", idToken)
+    # print("user:", user)
+    # print("menu_ref_list:", menu_ref_list)
+    # print("customer_id:", customer_id)
     
     # Firestore headers for authentication
     firestore_header = {
@@ -162,7 +162,7 @@ def delete_menu_item_from_customer(idToken, user, menu_ref_list, customer_id):
         return
     
     customer_doc = response.json()
-    print("customer_doc:", customer_doc)
+    # print("customer_doc:", customer_doc)
     
     # Extract the 'menu' field from the customer document
     fields = customer_doc.get('fields', {})
@@ -173,7 +173,7 @@ def delete_menu_item_from_customer(idToken, user, menu_ref_list, customer_id):
         print("No menu items found for the customer.")
         return
     
-    print("Current menu items:")
+    # print("Current menu items:")
     for item in menu_items:
         item_fields = item.get('mapValue', {}).get('fields', {})
         name = item_fields.get('name', {}).get('stringValue', '')

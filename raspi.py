@@ -173,7 +173,7 @@ def pengambilan_gambar():
         key = cv2.waitKey(1) & 0xFF
         if key == ord('c'):
             sudah_pencet = True
-            time.sleep(0.3)
+            time.sleep(0.1)
         elif key == ord('q') or liveness:
             break
 
