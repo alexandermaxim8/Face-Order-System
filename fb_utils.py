@@ -90,7 +90,7 @@ def add_user(idToken, id, menu, user):
         },
         "menu":{
             "arrayValue":{
-                "values":[{"referenceValue": x["name"]} for x in menu]
+                "values":[{"mapValue":{"fields":{"name":{"stringValue": x["fields"]["name"]["stringValue"]}, "price":{"integerValue": x["fields"]["price"]["integerValue"]}, "ref":{"referenceValue": x["name"]}}}} for x in menu]
                 }
             }
         }
@@ -108,41 +108,192 @@ def get_menu(idToken, user, id=None):
         "Content-Type": "application/json"
     }
     if id:
-        menu = {"name":[], "price":[], "path":[]}
+        menu = {"name":[], "price":[], "reference":[]}
+
         name = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/pelanggan/{id}'
         response = requests.get(f"{firestore_url}/v1beta1/{name}", headers=firestore_header)
         #print("response: ", response.json())
-        ref = response.json()["fields"]["menu"]["arrayValue"]["values"]
-        #print("ref", ref)
+        menu_items = response.json()["fields"]["menu"]["arrayValue"]["values"]
+        
 
         # Loop through each item in ref, which should be a list of dictionaries
-        for ref_item in ref:
-            # Extract the reference path from each item
-            reference = ref_item.get("referenceValue")
-            if reference:
-                response = requests.get(f"{firestore_url}/v1beta1/{reference}", headers=firestore_header)
-                document = response.json().get("fields", {})
-                path = response.json().get("name", {})
+        for item in menu_items:
+            fields = item.get('mapValue', {}).get('fields', {})
+            
+            # Ambil 'name', 'price', dan 'ref'
+            name = fields.get('name', {}).get('stringValue', '')
+            price = int(fields.get('price', {}).get('integerValue', 0))
+            reference = fields.get('ref', {}).get('referenceValue', '')
+            
+            # Tambahkan ke list
+            menu["name"].append(name)
+            menu["price"].append(price)
+            menu["reference"].append(reference)
 
-                # Assuming the response contains 'name' and 'price' fields, append them to menu
-                menu["name"].append(document.get("name", {}).get("stringValue", ""))
-                menu["price"].append(document.get("price", {}).get("integerValue", 0))
-                menu["path"].append(path)
-
-    
-        # for ref in ref["referenceValue"]:
-        #     response = requests.get(f"{firestore_url}/v1beta1/{ref}", headers=firestore_header)
-        #     # menu["name"].append(response.json()["documents"]["fields"]["name"]["stringValue"])
-        #     # menu["price"].append(response.json()["documents"]["fields"]["price"]["integerValue"])
-        #     menu.append(response.json()["documents"])
     else:
         parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}'
         collectionId = "menu"
         response = requests.get(f"{firestore_url}/v1beta1/{parents}/{collectionId}", headers=firestore_header)
         json_response = response.json()
         menu = json_response["documents"]
-    #print("menu: ", menu)
     return menu
+
+
+def delete_menu_item_from_customer(idToken, user, menu_ref_list, customer_id):
+    # print("Deleting menu items from customer.")
+    # print("idToken:", idToken)
+    # print("user:", user)
+    # print("menu_ref_list:", menu_ref_list)
+    # print("customer_id:", customer_id)
+    
+    # Firestore headers for authentication
+    firestore_header = {
+        "Authorization": f"Bearer {idToken}",
+        "Content-Type": "application/json"
+    }
+    
+    # Document path for the customer
+    document_path = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/pelanggan/{customer_id}'
+    
+    # Fetch the customer document
+    response = requests.get(f"{firestore_url}/v1/{document_path}", headers=firestore_header)
+    if response.status_code != 200:
+        print(f"Error fetching customer document: {response.json()}")
+        return
+    
+    customer_doc = response.json()
+    # print("customer_doc:", customer_doc)
+    
+    # Extract the 'menu' field from the customer document
+    fields = customer_doc.get('fields', {})
+    menu_items = fields.get('menu', {}).get('arrayValue', {}).get('values', [])
+    
+    # Check if 'menu' field exists
+    if not menu_items:
+        print("No menu items found for the customer.")
+        return
+    
+    # print("Current menu items:")
+    for item in menu_items:
+        item_fields = item.get('mapValue', {}).get('fields', {})
+        name = item_fields.get('name', {}).get('stringValue', '')
+        ref = item_fields.get('ref', {}).get('referenceValue', '')
+        price = item_fields.get('price', {}).get('integerValue', '')
+        print(f"- Name: {name}, Ref: {ref}, Price: {price}")
+    
+    # Remove the menu items with refs in menu_ref_list
+    new_menu_items = []
+    items_removed = False
+    for item in menu_items:
+        item_fields = item.get('mapValue', {}).get('fields', {})
+        ref = item_fields.get('ref', {}).get('referenceValue', '')
+        if ref in menu_ref_list:
+            items_removed = True
+            print(f"Removing menu item with ref: {ref}")
+            continue  # Skip this item to remove it from the list
+        new_menu_items.append(item)
+    
+    if not items_removed:
+        print(f"No matching menu items found in customer's menu.")
+        return
+    
+    # Prepare the updated menu items
+    updated_menu_field = {
+        'arrayValue': {
+            'values': new_menu_items
+        }
+    }
+    
+    # Update the customer document with the modified menu
+    update_data = {
+        'fields': {
+            'menu': updated_menu_field
+        }
+    }
+    
+    update_response = requests.patch(
+        f"{firestore_url}/v1/{document_path}?updateMask.fieldPaths=menu",
+        headers=firestore_header,
+        json=update_data
+    )
+    
+    if update_response.status_code == 200:
+        print("Menu items deleted successfully from customer.")
+    else:
+        print(f"Error updating customer document: {update_response.json()}")
+
+
+
+# def delete_menu_item_from_customer(idToken, user, menu_ref, customer_id):
+#     print("Deleting menu item from customer.")
+#     print("idToken", idToken)
+#     print("user", user)
+#     print("menu_ref", menu_ref)
+#     print("customer_id", customer_id)
+#     # Firestore headers for authentication
+#     firestore_header = {
+#         "Authorization": f"Bearer {idToken}",
+#         "Content-Type": "application/json"
+#     }
+    
+#     # Document path for the customer
+#     document_path = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/pelanggan/{customer_id}'
+    
+#     # Fetch the customer document
+#     response = requests.get(f"{firestore_url}/v1beta1/{document_path}", headers=firestore_header)
+#     # if response.status_code != 200:
+#     #     print(f"Error fetching customer document: {response.json()}")
+#     #     return
+    
+#     customer_doc = response.json()
+#     print("customer_doc", customer_doc)
+
+
+# def get_menu(idToken, user, pelanggan_id=None):
+#     firestore_header = {
+#         "Authorization": f"Bearer {idToken}",
+#         "Content-Type": "application/json"
+#     }
+    
+#     menu = {"name": [], "price": [], "path": []}
+    
+#     if pelanggan_id:
+#         # Mendapatkan dokumen pelanggan tertentu
+#         pelanggan_path = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/pelanggan/{pelanggan_id}'
+#         response = requests.get(f"{firestore_url}/v1beta1/{pelanggan_path}", headers=firestore_header)
+        
+#         if response.status_code == 200:
+#             pelanggan_data = response.json()
+#             menu_items = pelanggan_data.get("fields", {}).get("menu", {}).get("arrayValue", {}).get("values", [])
+            
+#             for item in menu_items:
+#                 # Mengambil referensi path untuk tiap menu
+#                 reference_path = item.get("referenceValue")
+#                 if reference_path:
+#                     item_response = requests.get(f"{firestore_url}/v1beta1/{reference_path}", headers=firestore_header)
+                    
+#                     if item_response.status_code == 200:
+#                         item_data = item_response.json().get("fields", {})
+#                         path = item_response.json().get("name", "")
+                        
+#                         # Tambahkan data ke menu
+#                         menu["name"].append(item_data.get("name", {}).get("stringValue", ""))
+#                         menu["price"].append(int(item_data.get("price", {}).get("integerValue", 0)))
+#                         menu["path"].append(path)
+#         else:
+#             print(f"Error: {response.status_code}, {response.text}")
+#     else:
+#         # Jika pelanggan_id tidak diberikan, ambil semua dokumen menu
+#         menu_path = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/menu'
+#         response = requests.get(f"{firestore_url}/v1beta1/{menu_path}", headers=firestore_header)
+        
+#         if response.status_code == 200:
+#             json_response = response.json()
+#             menu = json_response.get("documents", [])
+#         else:
+#             print(f"Error: {response.status_code}, {response.text}")
+    
+#     return menu
 
 def log_menu(idToken, user, menu, id):
     firestore_header = {
@@ -174,7 +325,7 @@ def log_menu(idToken, user, menu, id):
         }
     }
     # response = requests.patch(f"{firestore_url}/v1/{parents}/{collectionId}/{str(datetime.now(timezone(timedelta(hours=7))))}", data=json.dumps(data), headers=firestore_header)
-    response = requests.patch(f"{firestore_url}/v1/{parents}/{collectionId}/{utc7_time.strftime("%Y-%m-%d %H:%M:%S")}", data=json.dumps(data), headers=firestore_header)
+    response = requests.patch(f'{firestore_url}/v1/{parents}/{collectionId}/{utc7_time.strftime("%Y-%m-%d %H:%M:%S")}', data=json.dumps(data), headers=firestore_header)
     #print(response.json())
 
 def convert_utc7(date_time):

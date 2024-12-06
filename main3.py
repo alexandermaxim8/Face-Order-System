@@ -97,12 +97,16 @@ def face_recog(img, user):
         test_face = test_faces[0]
     else:
         print("No face detected in the image")
- 
-    with open(f'{user}.pkl', 'rb') as f:
-        print("user: ", user)
-        data = pickle.load(f)
-        id = data["id"]
-        known_faces = data["known_face"]
+    
+    if os.path.exists(f'{user}.pkl'):
+        with open(f'{user}.pkl', 'rb') as f:
+            print("user: ", user)
+            data = pickle.load(f)
+            id = data["id"]
+            known_faces = data["known_face"]
+    else:
+        return {"found": False}
+    
     try:
        # matches=FR.compare_faces(known_face, face_encoding, tolerance=0.3)
        # print("matches: ", matches)
@@ -111,7 +115,8 @@ def face_recog(img, user):
        print(f"best_match_index: {best_match_index}")
     except Exception as e:
         print(f"Compare error: {str(e)}")
-        return {"error": str(e)}
+        # return {"error": str(e)}
+        return {"found": False}
     
     if face_distances[best_match_index] < 0.35: # jarak ecludian 
         print(f"id: {id}")
@@ -217,10 +222,44 @@ async def predict(item: Item):
 
     found = face_recog(img, user)
     if found["found"]:
+        print("found: ", found)
         id = found["id"]
+
         menu = fb.get_menu(token, user, id)
-        print(menu)
-        return {"match_id": id, "menu": menu}
+        menu_name=np.array(menu["name"])
+        menu_ref=np.array(menu["reference"])
+        print("prediction function menu: ", menu_name )
+        # print("prediction function reference: ", menu_ref)
+
+        menu_all= fb.get_menu(token, user)
+        menu_all_name=[]
+        menu_all_ref=[]
+        for i, all in enumerate(menu_all):
+            menu_all_name.append(all["fields"]["name"]["stringValue"])
+            menu_all_ref.append(all["name"])
+        print("menu_all_name: ", menu_all_name)
+        # print("menu_all reference: ", menu_all_ref)
+        menu_all_name=np.array(menu_all_name)
+        menu_all_ref=np.array(menu_all_ref)
+
+        index_menu_dihapus= np.where(~np.isin(menu_name, menu_all_name))[0]
+        if index_menu_dihapus.size>0:
+            print("Maaf makanan anda sudah dihapus")
+            print("index_menu_dihapus: ", index_menu_dihapus)
+            print("makanan dihapus: ", menu_name[index_menu_dihapus])
+            # menu_ref[index_menu_dihapus]
+            fb.delete_menu_item_from_customer(token, user, menu_ref[index_menu_dihapus], id)
+    
+        print("Berhasil menu delete")
+        # menu_name=np.delete(menu_name, index_menu_dihapus)
+        # print("menu_name_delete: ", menu_name)
+        # if menu_all
+        print("menu:", menu)
+        menu_final_pelanggan={"name": np.delete(menu["name"], index_menu_dihapus).tolist(), 
+                              "price": np.delete(menu["price"], index_menu_dihapus).tolist(),
+                                "reference":  np.delete(menu["reference"], index_menu_dihapus).tolist()}
+        print("menu_final_pelanggan: ", menu_final_pelanggan)
+        return {"match_id": id,"menu": menu_final_pelanggan}
 
     else:
         return {"error": "No match found"}
