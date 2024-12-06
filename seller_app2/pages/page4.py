@@ -2,9 +2,6 @@ import streamlit as st
 from navigation import make_sidebar
 from fb_utils2 import get_menu, log_menu
 from datetime import datetime, timezone, timedelta
-# from fb_utils2 import get_favorites # jika ingin implementasi favorites terpisah
-# from navigation import make_sidebar  # jika dibutuhkan
-import requests
 
 def check_login():
     if 'logged_in' not in st.session_state or not st.session_state['logged_in']:
@@ -13,7 +10,6 @@ def check_login():
         st.session_state.clear()
         st.switch_page("login.py")
 
-# Panggil fungsi ini di awal halaman
 check_login()
 
 hide_navigation_style = """
@@ -29,15 +25,21 @@ make_sidebar()
 st.title("🍽️ Order Menu")
 st.write("Welcome, how do you want to make the order?")
 
-
 order_type = st.radio("Pilih Metode Pemesanan:", ["Manually", "Registered Favorite"])
 
 idToken = st.session_state.get('idToken')
 user = st.session_state.get('email')
 
 if idToken and user:
-    menu_list = get_menu(idToken, user)
-    menus = {doc['fields']['name']['stringValue']: int(doc['fields']['price']['integerValue']) for doc in menu_list}
+    # Ambil data menu hanya saat pertama kali halaman dibuka atau saat tidak ada di session_state
+    if "menus" not in st.session_state:
+        menu_list = get_menu(idToken, user)
+        st.session_state.menus = {
+            doc['fields']['name']['stringValue']: int(doc['fields']['price']['integerValue']) 
+            for doc in menu_list
+        }
+
+    menus = st.session_state.menus
 
     selected_items = {}
     st.subheader("Pilih Menu")
@@ -61,13 +63,11 @@ if idToken and user:
         else:
             total = 0
             st.subheader("Ringkasan Pesanan Anda")
-            # Buat array menu dalam format Firestore
             menu_array = []
             for item, (price, qty) in selected_items.items():
                 subtotal = price * qty
                 st.write(f"{item} x {qty} - Rp.{subtotal}")
                 total += subtotal
-                # Masukkan item ke dalam bentuk Firestore arrayValue
                 menu_array.append({
                     "mapValue": {
                         "fields": {
@@ -82,14 +82,11 @@ if idToken and user:
             st.success("Your food is being cooked, wait and enjoy!")
             st.balloons()
 
-            # Log menu ke Firestore
-            # Gunakan timestamp atau ID unik untuk 'id'
-            # Panggil fungsi log_menu
-            result = log_menu(idToken, user, menu_array,0)
+            # Barulah di sini kita tulis ke Firebase
+            order_id = int(datetime.now().timestamp())
+            result = log_menu(idToken, user, menu_array, order_id)
             if result:
-                # Anda dapat memeriksa respons jika log_menu mengembalikan response JSON
-                # Misal: st.write("Menu logged successfully!")
-                pass
+                st.write("Menu logged successfully!")
 else:
     st.error("Anda belum login. Silakan login terlebih dahulu.")
     st.stop()
