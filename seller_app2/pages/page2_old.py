@@ -1,14 +1,17 @@
 from navigation import make_sidebar
 import streamlit as st
-from fb_utils2 import add_menu, update_menu, get_menu, delete_menu
+from fb_utils2 import add_menu, update_menu, get_menu
 
+# saat refresh website, maka akan kembali ke halaman login
 def check_login():
     if 'logged_in' not in st.session_state or not st.session_state['logged_in']:
         st.warning("Anda belum login. Mengarahkan ke halaman login...")
+        #st.experimental_rerun()
         st.session_state.logged_in = False
         st.session_state.clear()
         st.switch_page("login.py")
 
+# Panggil fungsi ini di awal setiap halaman
 check_login()
 
 # Sembunyikan navigasi sidebar (opsional)
@@ -26,16 +29,19 @@ make_sidebar()
 st.title("🍔Menubase")
 st.header("New Menu➕", divider="orange")
 
+# Cek apakah pengguna sudah login
 if 'idToken' in st.session_state and 'email' in st.session_state:
     idToken = st.session_state['idToken']
     user = st.session_state['email']
         
     # Form untuk menambahkan menu
+    # st.header("Tambah Menu Makanan Baru")
     menu_name = st.text_input("Nama Menu:")
     menu_price = st.number_input("Harga Menu:", min_value=0)
 
     if st.button("Add"):
         if menu_name and menu_price:
+            # Panggil fungsi add_menu untuk menambahkan menu ke Firebase
             result = add_menu(menu_name, menu_price, idToken, user)
             if result.get('success'):
                 st.success(f"Menu '{menu_name}' berhasil ditambahkan!")
@@ -44,7 +50,7 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
         else:
             st.error("Silakan isi nama dan harga menu.")
 
-    # Form untuk mengedit menu
+        # Form untuk mengedit menu
     st.header("Edit Menu⭕", divider="violet")
     menu_list = get_menu(idToken, user)  # Ambil semua menu dari Firebase
     menu_options = {doc['fields']['name']['stringValue']: doc['name'].split('/')[-1] for doc in menu_list}
@@ -63,23 +69,6 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
                 st.error(f"Gagal memperbarui menu: {result.get('error')}")
         else:
             st.error("Silakan isi nama baru atau harga baru untuk menu yang dipilih.")
-
-    # Form untuk menghapus menu
-    st.header("Hapus Menu🗑️", divider="red")
-    selected_menu_delete = st.selectbox("Pilih Menu untuk Dihapus:", options=menu_options.keys(), key="delete_select")
-    if st.button("Delete"):
-        if selected_menu_delete:
-            menu_id_delete = menu_options[selected_menu_delete]
-            result = delete_menu(idToken, user, menu_id_delete)
-            if result.get('success'):
-                st.success(f"Menu '{selected_menu_delete}' berhasil dihapus!")
-                # Setelah menghapus, kita refresh daftar menu
-                menu_list = get_menu(idToken, user) 
-                menu_options = {doc['fields']['name']['stringValue']: doc['name'].split('/')[-1] for doc in menu_list}
-            else:
-                st.error(f"Gagal menghapus menu: {result.get('error')}")
-        else:
-            st.error("Silakan pilih menu yang ingin dihapus.")
 
 else:
     st.error("Anda belum login. Silakan login terlebih dahulu.")

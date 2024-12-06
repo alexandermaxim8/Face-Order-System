@@ -7,6 +7,7 @@ def make_sidebar():
             st.page_link("pages/page1.py", label="Sales Analytics", icon="📈")
             st.page_link("pages/page2.py", label="Menubase", icon="🍔")
             st.page_link("pages/page3.py", label="Pesanan", icon="📜")
+            st.page_link("pages/page4.py", label="Order Menu", icon="🍽️")
 
             st.write("")
             st.write("")

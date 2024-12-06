@@ -136,8 +136,118 @@ def get_menu(idToken, user, id=None):
         response = requests.get(f"{firestore_url}/v1beta1/{parents}/{collectionId}", headers=firestore_header)
         json_response = response.json()
         menu = json_response["documents"]
-    print("menu: ", menu)
     return menu
+
+
+def delete_menu_item_from_customer(idToken, user, menu_ref_list, customer_id):
+    # print("Deleting menu items from customer.")
+    # print("idToken:", idToken)
+    # print("user:", user)
+    # print("menu_ref_list:", menu_ref_list)
+    # print("customer_id:", customer_id)
+    
+    # Firestore headers for authentication
+    firestore_header = {
+        "Authorization": f"Bearer {idToken}",
+        "Content-Type": "application/json"
+    }
+    
+    # Document path for the customer
+    document_path = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/pelanggan/{customer_id}'
+    
+    # Fetch the customer document
+    response = requests.get(f"{firestore_url}/v1/{document_path}", headers=firestore_header)
+    if response.status_code != 200:
+        print(f"Error fetching customer document: {response.json()}")
+        return
+    
+    customer_doc = response.json()
+    # print("customer_doc:", customer_doc)
+    
+    # Extract the 'menu' field from the customer document
+    fields = customer_doc.get('fields', {})
+    menu_items = fields.get('menu', {}).get('arrayValue', {}).get('values', [])
+    
+    # Check if 'menu' field exists
+    if not menu_items:
+        print("No menu items found for the customer.")
+        return
+    
+    # print("Current menu items:")
+    for item in menu_items:
+        item_fields = item.get('mapValue', {}).get('fields', {})
+        name = item_fields.get('name', {}).get('stringValue', '')
+        ref = item_fields.get('ref', {}).get('referenceValue', '')
+        price = item_fields.get('price', {}).get('integerValue', '')
+        print(f"- Name: {name}, Ref: {ref}, Price: {price}")
+    
+    # Remove the menu items with refs in menu_ref_list
+    new_menu_items = []
+    items_removed = False
+    for item in menu_items:
+        item_fields = item.get('mapValue', {}).get('fields', {})
+        ref = item_fields.get('ref', {}).get('referenceValue', '')
+        if ref in menu_ref_list:
+            items_removed = True
+            print(f"Removing menu item with ref: {ref}")
+            continue  # Skip this item to remove it from the list
+        new_menu_items.append(item)
+    
+    if not items_removed:
+        print(f"No matching menu items found in customer's menu.")
+        return
+    
+    # Prepare the updated menu items
+    updated_menu_field = {
+        'arrayValue': {
+            'values': new_menu_items
+        }
+    }
+    
+    # Update the customer document with the modified menu
+    update_data = {
+        'fields': {
+            'menu': updated_menu_field
+        }
+    }
+    
+    update_response = requests.patch(
+        f"{firestore_url}/v1/{document_path}?updateMask.fieldPaths=menu",
+        headers=firestore_header,
+        json=update_data
+    )
+    
+    if update_response.status_code == 200:
+        print("Menu items deleted successfully from customer.")
+    else:
+        print(f"Error updating customer document: {update_response.json()}")
+
+
+
+# def delete_menu_item_from_customer(idToken, user, menu_ref, customer_id):
+#     print("Deleting menu item from customer.")
+#     print("idToken", idToken)
+#     print("user", user)
+#     print("menu_ref", menu_ref)
+#     print("customer_id", customer_id)
+#     # Firestore headers for authentication
+#     firestore_header = {
+#         "Authorization": f"Bearer {idToken}",
+#         "Content-Type": "application/json"
+#     }
+    
+#     # Document path for the customer
+#     document_path = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/pelanggan/{customer_id}'
+    
+#     # Fetch the customer document
+#     response = requests.get(f"{firestore_url}/v1beta1/{document_path}", headers=firestore_header)
+#     # if response.status_code != 200:
+#     #     print(f"Error fetching customer document: {response.json()}")
+#     #     return
+    
+#     customer_doc = response.json()
+#     print("customer_doc", customer_doc)
+
 
 # def get_menu(idToken, user, pelanggan_id=None):
 #     firestore_header = {
@@ -402,3 +512,23 @@ def get_recent_order(idToken, user, update=None, limit=10):
     # print(json_response)
 
     return json_response
+
+
+
+def delete_menu(idToken, user, menu_id):
+    firestore_header = {
+        "Authorization": f"Bearer {idToken}",
+        "Content-Type": "application/json"
+    }
+    # Path ke dokumen menu yang ingin dihapus
+    document_path = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/{user}/menu/{menu_id}'
+    
+    # Mengirim request DELETE ke Firestore
+    response = requests.delete(f"{firestore_url}/v1/{document_path}", headers=firestore_header)
+    
+    if response.status_code == 200:
+        print(f"Menu ID {menu_id} berhasil dihapus.")
+        return {"success": True}
+    else:
+        print(f"Gagal menghapus menu ID {menu_id}: {response.text}")
+        return {"success": False, "error": response.json()}

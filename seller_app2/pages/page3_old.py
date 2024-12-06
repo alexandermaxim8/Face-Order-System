@@ -66,28 +66,13 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
             fields = doc["document"]["fields"]
             order_time = datetime.fromisoformat(fields["datetime"]["timestampValue"].replace("Z", "+00:00"))
             order_time = order_time.astimezone(timezone(timedelta(hours=7)))
-
-            menu_items = fields["menu"]["arrayValue"]["values"]
-            
-            # Mengumpulkan item pesanan dengan quantity
-            item_list = []
-            total_price = 0
-            for item in menu_items:
-                item_fields = item["mapValue"]["fields"]
-                name = item_fields["name"]["stringValue"]
-                price = int(item_fields["price"]["integerValue"])
-                quantity = int(item_fields["quantity"]["integerValue"]) if "quantity" in item_fields else 1
-
-                # Tambahkan ke daftar item
-                item_list.append(f"{quantity}-{name}")
-                # Hitung total harga
-                total_price += price * quantity
-
+            order_items = [item["mapValue"]["fields"]["name"]["stringValue"] for item in fields["menu"]["arrayValue"]["values"]]
+            total_price = sum(int(item["mapValue"]["fields"]["price"]["integerValue"]) for item in fields["menu"]["arrayValue"]["values"])
             orders.append({
                 "No": idx,  # Kolom nomor urut
                 "Pilih": False,  # Kolom checkbox
                 "Waktu Pesanan": order_time.strftime("%Y-%m-%d %H:%M:%S"),
-                "Item Pesanan": ", ".join(item_list),
+                "Item Pesanan": ", ".join(order_items),
                 "Total Harga": f"Rp{total_price:,}"
             })
 
@@ -116,12 +101,12 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
         # Menampilkan data pesanan yang dipilih
         if not selected_orders.empty:
             st.subheader("Pesanan yang Sudah Selesai")
-            # Pada tampilan ini, item pesanan sudah termasuk quantity
             st.table(selected_orders.drop(columns=["Pilih"]))
         else:
             st.info("Tidak ada pesanan yang dipilih.")
     else:
         st.info("Tidak ada data pesanan yang ditemukan.")
+
 else:
     st.error("Anda belum login. Silakan login terlebih dahulu.")
     st.stop()
