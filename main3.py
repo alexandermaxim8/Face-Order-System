@@ -20,26 +20,6 @@ known_face = []
 
 app = FastAPI()
 
-# class ReferenceValue(BaseModel):
-#     referenceValue: str
-
-# class ArrayValue(BaseModel):
-#     values: List[ReferenceValue]
-
-# class Fields(BaseModel):
-#     id: Optional[int]
-#     menu: ArrayValue
-
-# class Fields(BaseModel):
-#     name: Optional[int]
-#     price: ArrayValue
-
-# class FirestoreDocument(BaseModel):
-#     name: str
-#     fields: Fields
-#     createTime: datetime
-#     updateTime: datetime
-
 class PriceField(BaseModel):
     integerValue: str
 
@@ -85,7 +65,6 @@ class Item(BaseModel):
     menu: Optional[List[FirestoreDocument]] = None
     face: str
     user: str
-    token: str
  
 
 def face_recog(img, user):
@@ -141,7 +120,6 @@ async def train(item: Item):  # Use Body to indicate raw byte data
     menu = [document.to_dict() for document in item.menu]
     print(menu)
     user = item.user
-    token = item.token
     image_bytes = base64.b64decode(image_data)
     try:
         # Debugging print to check if data is received
@@ -184,7 +162,7 @@ async def train(item: Item):  # Use Body to indicate raw byte data
 
         # Save the new face encoding
         print("save the new face encoding")
-        new_id = fb.generate_id(token, user)
+        new_id = fb.generate_id(user)
         known_face.append(new_face)
         # print(len(known_face))
         id.append(new_id)
@@ -198,7 +176,7 @@ async def train(item: Item):  # Use Body to indicate raw byte data
         with open(f'{user}.pkl', 'wb') as f:
             pickle.dump(data, f)
 
-        fb.add_user(token, new_id, menu, user)
+        fb.add_user(new_id, menu, user)
         print("Success")
 
         return {"status": "Training completed", "new_id": new_id, "menu": menu}
@@ -212,7 +190,6 @@ async def predict(item: Item):
     print("predict function")
     user = item.user
     image_data = item.face
-    token = item.token
     image_bytes = base64.b64decode(image_data)
     img = Image.open(io.BytesIO(image_bytes))
     img = np.array(img)
@@ -225,13 +202,13 @@ async def predict(item: Item):
         print("found: ", found)
         id = found["id"]
 
-        menu = fb.get_menu(token, user, id)
+        menu = fb.get_menu(user, id)
         menu_name=np.array(menu["name"])
         menu_ref=np.array(menu["reference"])
         print("prediction function menu: ", menu_name )
         # print("prediction function reference: ", menu_ref)
 
-        menu_all= fb.get_menu(token, user)
+        menu_all= fb.get_menu(user)
         menu_all_name=[]
         menu_all_ref=[]
         for i, all in enumerate(menu_all):
@@ -248,7 +225,7 @@ async def predict(item: Item):
             print("index_menu_dihapus: ", index_menu_dihapus)
             print("makanan dihapus: ", menu_name[index_menu_dihapus])
             # menu_ref[index_menu_dihapus]
-            fb.delete_menu_item_from_customer(token, user, menu_ref[index_menu_dihapus], id)
+            fb.delete_menu_item_from_customer(user, menu_ref[index_menu_dihapus], id)
     
         print("Berhasil menu delete")
         # menu_name=np.delete(menu_name, index_menu_dihapus)
