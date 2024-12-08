@@ -45,13 +45,16 @@ st.markdown(hide_sidebar_style, unsafe_allow_html=True)
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
+if "guest_in" not in st.session_state:
+    st.session_state.guest_in = False
+
 # Call sidebar logic (will remain empty for non-logged-in users)
 make_sidebar()
 
 st.title("📱Welcome to Face-Order Seller App")
-st.write("Please log in to continue (email `alexandermaxim8@gmail.com`, password `alex12345`).")
+st.write("Please log in to continue (eatery id `alexandermaxim8`, password `alex12345`).")
 
-email = st.text_input("Email")
+email = f'{st.text_input("Eatery ID")}@gmail.com'
 password = st.text_input("Password", type="password")
 
 token = fb.init_firebase(email, password)
@@ -66,3 +69,14 @@ if st.button("Log in", type="primary"):
         st.switch_page("pages/page1.py")  # Redirect to a new page
     else:
         login_error(token["Error"])
+
+if st.button("Guest/Customer", type="secondary"):
+    if fb.get_user(email):
+        st.session_state.guest_in = True  # Set the login state
+        # st.session_state["idToken"] = token["idToken"]
+        st.session_state["email"] = email
+        st.success("Logged in successfully!")
+        sleep(0.5)
+        st.switch_page("pages/page4.py")  # Redirect to a new page
+    else:
+        login_error("Eatery ID is not exist")

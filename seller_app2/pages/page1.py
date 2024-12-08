@@ -50,7 +50,7 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
     if from_date_sales > to_date_sales:
         date_error()
     else:
-        date, total = fb.get_sales(idToken, user, from_date_sales, to_date_sales)
+        date, total = fb.get_sales(user, from_date_sales, to_date_sales)
         sales_data = pd.DataFrame({"Sales": total}, index=date)
         st.area_chart(sales_data)
 
@@ -69,7 +69,7 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
         else:
             date_error()
     else:
-        menu, counts = fb.get_menuranks(idToken, user, from_date_menu, to_date_menu)
+        menu, counts = fb.get_menuranks(user, from_date_menu, to_date_menu)
         menuranks_data = pd.DataFrame({"Counts":counts}, index=menu)
         st.bar_chart(menuranks_data)
 

@@ -181,14 +181,34 @@ def pengambilan_gambar():
     cv2.destroyAllWindows()
     return frame_crop if 'frame_crop' in locals() else None
 
+def select_menu():
+    menu = fb.get_menu(idToken, email)
+    # menu = fb.get_menu(idToken, email)
+    for i, menu_pilihan in enumerate(menu):
+        print(f'{i+1}. {menu_pilihan["fields"]["name"]["stringValue"]} - Rp.{menu_pilihan["fields"]["price"]["integerValue"]}')
+    
+    while True:
+        try:
+            print("Pick your favorites!\neg: 3 2 1")
+            menupick = input(">> ")
+            menupick = list(map(int, menupick.split(' ')))
+            # Check if all selections are valid
+            # selected_menu = [menu[x-1] for x in menupick]  # This will raise IndexError if an invalid index is chosen
+            break  
+        except IndexError:
+            print("Invalid menu selection. Please enter valid menu numbers.")
+        except ValueError:
+            print("Invalid input. Please enter numbers only, separated by commas.")
 
-
+    print(menupick)
+    print(menu)
+    return menupick, menu
 
 def order():
     response = None
     try:
         img = pengambilan_gambar()
-        # img = cv2.imre("orang3.jpg", cv2.COLOR_BGR2RGB)
+        # img = cv2.imread("orang3.jpg", cv2.COLOR_BGR2RGB)
         retval, buffer = cv2.imencode('.jpg', img)
         image_bytes = buffer.tobytes()
         image_base64 = base64.b64encode(image_bytes).decode('utf-8')
@@ -223,14 +243,33 @@ def order():
         #   print(f'{i+1}. {menu_pilihan["fields"]["name"]["stringValue"]} - Rp.{menu_pilihan["fields"]["price"]["integerValue"]}')
         #   price += int(menu_pilihan[i-1]["fields"]["price"]["integerValue"])
 
-        proceed = input("Proceed?(y/n)")
+        print("Proceed?(y/n)\nPress e to edit your personalized menu")
+        proceed = input(">>> ")
         if proceed == "y":
             print(f"Total: {total_price}")
             print("Your order is being processed, wait and enjoy!")
             selected_menu = [{"mapValue":{"fields":{"name":{"stringValue": menu_name}, "price":{"integerValue": menu_price}}}} for menu_name, menu_price in zip(menu_data["name"], menu_data["price"])]
             fb.log_menu(idToken, email, selected_menu, response.json()["match_id"])
-        else:
+        elif proceed == "n":
             print("Order Canceled.")
+        else:
+            menupick, menu = select_menu()
+            selected_menu = [menu[x-1] for x in menupick]
+            fb.add_user(idToken, response.json()["match_id"], selected_menu, email)
+            
+            print("Favorite menu updated, proceed order?(y/n)")
+            proceed = input(">>> ")
+            if proceed == "y":
+                total_price = sum(int(menu[x-1]["fields"]["price"]["integerValue"]) for x in menupick)
+                print(f"Total: Rp.{total_price}")
+                print("Your food is being cooked, please wait and enjoy!")
+
+                selected_menu = [{"mapValue":{"fields":{"name":{"stringValue": menu[x-1]["fields"]["name"]["stringValue"]}, "price":{"integerValue": menu[x-1]["fields"]["price"]["integerValue"]}}}} for x in menupick]
+                fb.log_menu(idToken, email, selected_menu, response.json()["match_id"])
+            else:
+                print("Order Canceled.")
+            
+        
     except requests.exceptions.RequestException as e:
         print("Error during order processing:", e)
         if response:
@@ -242,35 +281,8 @@ def order():
 def register():
     response = None
     try:
-        # databaseId = "(default)"
-        # firestore_url = "https://firestore.googleapis.com"
-        # parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/admin@gmail.com'
-        # collectionId = "menu"
-        # response = requests.get(f"{firestore_url}/v1beta1/{parents}/{collectionId}", headers=firestore_header)
-        # json_response = response.json()
-        # menu = json_response["documents"]
-        menu = fb.get_menu(idToken, email)
-
-        # menu = fb.get_menu(idToken, email)
-        for i, menu_pilihan in enumerate(menu):
-            print(f'{i+1}. {menu_pilihan["fields"]["name"]["stringValue"]} - Rp.{menu_pilihan["fields"]["price"]["integerValue"]}')
-
-        # print("Pick your favorites!\neg: 3 2 1")
-        # menupick = input(">> ")
-
-        while True:
-            try:
-                print("Pick your favorites!\neg: 3 2 1")
-                menupick = input(">> ")
-                menupick = list(map(int, menupick.split(' ')))
-                # Check if all selections are valid
-                selected_menu = [menu[x-1] for x in menupick]  # This will raise IndexError if an invalid index is chosen
-                break  
-            except IndexError:
-                print("Invalid menu selection. Please enter valid menu numbers.")
-            except ValueError:
-                print("Invalid input. Please enter numbers only, separated by commas.")
-        
+        menupick, menu = select_menu()
+        selected_menu = [menu[x-1] for x in menupick]
         
         print("Get ready to take a picture.")
         img = pengambilan_gambar()
@@ -308,46 +320,17 @@ def register():
 
 
 def manual():
-    # databaseId = "(default)"
-    # firestore_url = "https://firestore.googleapis.com"
-    # parents = f'projects/{config["projectId"]}/databases/{databaseId}/documents/users/admin@gmail.com'
-    # collectionId = "menu"
-    # response = requests.get(f"{firestore_url}/v1beta1/{parents}/{collectionId}", headers=firestore_header)
-    # json_response = response.json()
-    # menu = json_response["documents"]
-
-    menu = fb.get_menu(idToken, email)
-    # print("menu: ", menu)
-    # for k, l in enumerate(menu):
-    #     print("\n\n",l['name'])
-    for i, menu_pilihan in enumerate(menu):
-        print(f'{i+1}. {menu_pilihan["fields"]["name"]["stringValue"]} - Rp.{menu_pilihan["fields"]["price"]["integerValue"]}')
-
-    # print("Pick your favorites!\neg: 3 2 1")
-    # menupick = input(">> ")
-
-    while True:
-        try:
-            print("Pick your menu!\neg: 3 2 1")
-            menupick = input(">> ")
-            menupick = list(map(int, menupick.split(' ')))
-            # Check if all selections are valid
-            # selected_menu = [menu[x-1] for x in menupick]  # This will raise IndexError if an invalid index is chosen
-            price = 0
-            for i in menupick:
-                print(f'{menu[i-1]["fields"]["name"]["stringValue"]} - Rp.{menu[i-1]["fields"]["price"]["integerValue"]}')
-                price += int(menu[i-1]["fields"]["price"]["integerValue"])
-                print(f"Total: {price}")
-                print("You're food is being cooked, wait and enjoy!")
-                # selected_menu = [menu[x-1]["name"] for x in menupick]
-            selected_menu = [{"mapValue":{"fields":{"name":{"stringValue": menu[x-1]["fields"]["name"]["stringValue"]}, "price":{"integerValue": menu[x-1]["fields"]["price"]["integerValue"]}}}} for x in menupick]
-            print(selected_menu)
-            fb.log_menu(idToken, email, selected_menu, 0)
-            break  
-        except IndexError:
-            print("Invalid menu selection. Please enter valid menu numbers.")
-        except ValueError:
-            print("Invalid input. Please enter numbers only, separated by commas.")
+    menupick, menu = select_menu()
+    price = 0
+    for i in menupick:
+        print(f'{menu[i-1]["fields"]["name"]["stringValue"]} - Rp.{menu[i-1]["fields"]["price"]["integerValue"]}')
+        price += int(menu[i-1]["fields"]["price"]["integerValue"])
+        print(f"Total: {price}")
+        print("You're food is being cooked, wait and enjoy!")
+        # selected_menu = [menu[x-1]["name"] for x in menupick]
+    selected_menu = [{"mapValue":{"fields":{"name":{"stringValue": menu[x-1]["fields"]["name"]["stringValue"]}, "price":{"integerValue": menu[x-1]["fields"]["price"]["integerValue"]}}}} for x in menupick]
+    print(selected_menu)
+    fb.log_menu(idToken, email, selected_menu, 0)
  
 def main():
     while True:
@@ -375,4 +358,4 @@ def main():
 
 
 if __name__=="__main__":
-   main()
+   main()1

@@ -50,9 +50,9 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
         # Pass selected orders to the function if they exist
         if not selected_orders.empty:
             selected_order_times = selected_orders["Waktu Pesanan"].tolist()
-            json_response = fb.get_recent_order(idToken, user, selected_order_times, limit=10)
+            json_response = fb.get_recent_order(user, selected_order_times, limit=10)
         else:
-            json_response = fb.get_recent_order(idToken, user, limit=10)
+            json_response = fb.get_recent_order(user, limit=10)
         
         st.session_state.refresh_data = False  # Reset flag setelah data diambil
         st.session_state.json_response = json_response
