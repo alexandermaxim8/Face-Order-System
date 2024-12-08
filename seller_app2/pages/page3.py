@@ -50,9 +50,9 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
         # Pass selected orders to the function if they exist
         if not selected_orders.empty:
             selected_order_times = selected_orders["Waktu Pesanan"].tolist()
-            json_response = fb.get_recent_order(idToken, user, selected_order_times, limit=10)
+            json_response = fb.get_recent_order(user, selected_order_times, limit=10)
         else:
-            json_response = fb.get_recent_order(idToken, user, limit=10)
+            json_response = fb.get_recent_order(user, limit=10)
         
         st.session_state.refresh_data = False  # Reset flag setelah data diambil
         st.session_state.json_response = json_response
@@ -66,13 +66,28 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
             fields = doc["document"]["fields"]
             order_time = datetime.fromisoformat(fields["datetime"]["timestampValue"].replace("Z", "+00:00"))
             order_time = order_time.astimezone(timezone(timedelta(hours=7)))
-            order_items = [item["mapValue"]["fields"]["name"]["stringValue"] for item in fields["menu"]["arrayValue"]["values"]]
-            total_price = sum(int(item["mapValue"]["fields"]["price"]["integerValue"]) for item in fields["menu"]["arrayValue"]["values"])
+
+            menu_items = fields["menu"]["arrayValue"]["values"]
+            
+            # Mengumpulkan item pesanan dengan quantity
+            item_list = []
+            total_price = 0
+            for item in menu_items:
+                item_fields = item["mapValue"]["fields"]
+                name = item_fields["name"]["stringValue"]
+                price = int(item_fields["price"]["integerValue"])
+                quantity = int(item_fields["quantity"]["integerValue"]) if "quantity" in item_fields else 1
+
+                # Tambahkan ke daftar item
+                item_list.append(f"{quantity}-{name}")
+                # Hitung total harga
+                total_price += price * quantity
+
             orders.append({
                 "No": idx,  # Kolom nomor urut
                 "Pilih": False,  # Kolom checkbox
                 "Waktu Pesanan": order_time.strftime("%Y-%m-%d %H:%M:%S"),
-                "Item Pesanan": ", ".join(order_items),
+                "Item Pesanan": ", ".join(item_list),
                 "Total Harga": f"Rp{total_price:,}"
             })
 
@@ -101,12 +116,12 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
         # Menampilkan data pesanan yang dipilih
         if not selected_orders.empty:
             st.subheader("Pesanan yang Sudah Selesai")
+            # Pada tampilan ini, item pesanan sudah termasuk quantity
             st.table(selected_orders.drop(columns=["Pilih"]))
         else:
             st.info("Tidak ada pesanan yang dipilih.")
     else:
         st.info("Tidak ada data pesanan yang ditemukan.")
-
 else:
     st.error("Anda belum login. Silakan login terlebih dahulu.")
     st.stop()
