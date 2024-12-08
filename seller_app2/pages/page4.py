@@ -5,6 +5,7 @@ from datetime import datetime, timezone, timedelta
 
 if 'first_visit_manual' not in st.session_state:
     st.session_state.first_visit_manual = True
+    st.cache_resource.clear()
 
 if st.session_state.first_visit_manual:
     keys_to_keep = ["guest_in", "logged_in", "email", "first_visit_manual"]

@@ -12,19 +12,18 @@ import fb_utils2 as fb
 import time
 
 def reset(super=False):
-    # st.session_state.sudah_pencet = False
-    # st.session_state.EAR_buffer = []
-    # st.session_state.blink_counter = 0
-    # st.session_state.liveness = False
-    # # st.session_state.stop_clicked = False
-    # st.session_state.EAR_THRESHOLD1 = None
-    # st.session_state.EAR_THRESHOLD2 = None
-    # st.session_state.messages = []  # Hapus semua pesan
-    # st.session_state.similar_face = False
-    # st.session_state.cam_active = True
-    st.cache_resource.clear()
+    st.session_state.sudah_pencet = False
+    st.session_state.EAR_buffer = []
+    st.session_state.blink_counter = 0
+    st.session_state.liveness = False
+    # st.session_state.stop_clicked = False
+    st.session_state.EAR_THRESHOLD1 = None
+    st.session_state.EAR_THRESHOLD2 = None
+    st.session_state.messages = []  # Hapus semua pesan
+    st.session_state.similar_face = False
+    st.session_state.cam_active = True
     if super:
-        keys_to_keep = ["guest_in", "logged_in", "email", "first_visit_face"]
+        keys_to_keep = ["guest_in", "logged_in", "email", "first_visit"]
         for key in list(st.session_state.keys()):
             if key not in keys_to_keep:
                 del st.session_state[key]
@@ -40,7 +39,7 @@ def check_login():
     if 'guest_in' not in st.session_state or not st.session_state['guest_in']:
         st.warning("Anda belum login. Mengarahkan ke halaman login...")
         st.session_state.guest_in = False
-        # st.session_state.clear()
+        st.session_state.clear()
         st.switch_page("login.py")
 
 # Panggil fungsi ini di awal halaman
@@ -68,7 +67,7 @@ facial_landmark_file = os.path.join(script_dir, 'shape_predictor_68_face_landmar
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(facial_landmark_file)
 
-@st.cache_resource
+# @st.cache_resource
 def get_camera():
     # Fungsi ini hanya dipanggil sekali karena di-cache
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
@@ -113,12 +112,6 @@ if 'response_face' not in st.session_state:
     st.session_state.response_face = None
 if 'edit_fav' not in st.session_state:
     st.session_state.edit_fav = False
-if 'mode' not in st.session_state:
-    st.session_state.mode = "Face Order"
-if 'new_face' not in st.session_state:
-    st.session_state.new_face = None
-if 'order' not in st.session_state:
-    st.session_state.order = True
 
 idToken = st.session_state.get('idToken')
 user = st.session_state.get('email')
@@ -126,7 +119,6 @@ user = st.session_state.get('email')
 reset_button_pressed = st.button("Retake", type="primary")
 if reset_button_pressed:
     reset(super=True)
-    # st.cache_resource.clear()
     st.rerun()
 
 if st.session_state.cam_active:
@@ -140,11 +132,6 @@ if st.session_state.cam_active:
         5. Tekan "Stop" untuk menghentikan, atau "Reset Proses" untuk memulai ulang proses dari awal (dan menghapus semua pesan).
         """)
 
-    mode = st.radio(
-    label="Choose Mode:",  # Label for the radio button
-    options=["Face Order", "Register New Face"],  # Options to display
-    key="mode")
-    
     col1, col2, col3 = st.columns([1,1,1])
     with col1:
         konfirmasi_pressed = st.button("Start Blinking")
@@ -242,38 +229,24 @@ if st.session_state.cam_active:
 
     cap.release()
     cv2.destroyAllWindows()
-    # st.cache_resource.clear()
-    if 'frame_crop' in globals():
-        if st.session_state.mode == "Face Order":
-            with st.spinner('Recognizing your face'):
-                retval, buffer = cv2.imencode('.jpg', frame_crop)
-                image_bytes = buffer.tobytes()
-                image_base64 = base64.b64encode(image_bytes).decode('utf-8')
-                headers = {'Content-Type': 'application/json'}
-                face = {"face": image_base64, "user": user}
-                response = requests.post(f"{url}/predict", data=json.dumps(face), headers=headers) 
-                st.session_state.order = True
 
-            if "error" in response.json():
-                st.session_state.response_face = response.json()
-                st.session_state.not_found = True
-                # st.cache_resource.clear()
-                reset()
-                st.rerun()
-            else:
-                st.session_state.cam_active = False
-                st.session_state.response_face = response.json()
-                st.rerun()
-        
-        elif st.session_state.mode == "Register New Face":
-            with st.spinner('Capturing your face'):
-                retval, buffer = cv2.imencode('.jpg', frame_crop)
-                image_bytes = buffer.tobytes()
-                image_base64 = base64.b64encode(image_bytes).decode('utf-8')
-                st.session_state.new_face = image_base64
-                st.session_state.cam_active = False
-                st.session_state.order = False
-                st.rerun()
+    with st.spinner('Recognizing your face'):
+        retval, buffer = cv2.imencode('.jpg', frame_crop)
+        image_bytes = buffer.tobytes()
+        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+        headers = {'Content-Type': 'application/json'}
+        face = {"face": image_base64, "user": user}
+        response = requests.post(f"{url}/predict", data=json.dumps(face), headers=headers) 
+
+    if "error" in response.json():
+        st.session_state.response_face = response.json()
+        st.session_state.not_found = True
+        reset()
+        st.rerun()
+    else:
+        st.session_state.cam_active = False
+        st.session_state.response_face = response.json()
+        st.rerun()
     # else:
     #     with message_container:
     #         if st.session_state.messages:
@@ -282,7 +255,7 @@ if st.session_state.cam_active:
     #                 st.markdown(f"<p style='font-size:20px;'>{msg}</p>", unsafe_allow_html=True)
     #         else:
     #             st.markdown("<p style='font-size:20px;'>Proses dihentikan. Tekan 'Reset Proses' untuk memulai ulang.</p>", unsafe_allow_html=True)
-elif (not st.session_state.cam_active) and st.session_state.order:
+else:
     if st.session_state.edit_fav == False:
         if "menu_fav" not in st.session_state:
             menu_list = st.session_state.response_face["menu"]
@@ -398,7 +371,7 @@ elif (not st.session_state.cam_active) and st.session_state.order:
                     # reset(super=True)
                     # st.rerun()
 
-        if st.button("Go Back"):
+        if st.button("Cancel"):
             menu_list = fb.get_menu(user, st.session_state.response_face["match_id"])
             st.session_state.menu_fav = {
                 name: price 
@@ -406,65 +379,3 @@ elif (not st.session_state.cam_active) and st.session_state.order:
             }
             st.session_state.edit_fav = False
             st.rerun()
-
-elif (not st.session_state.cam_active) and (not st.session_state.order):
-    if "menus2" not in st.session_state:
-        st.session_state.menus2 = fb.get_menu(user)
-
-    print(st.session_state.menus2)
-    menus = {
-            doc['fields']['name']['stringValue']: int(doc['fields']['price']['integerValue']) 
-            for doc in st.session_state.menus2
-        }
-    print(menus)
-
-    selected_items = {}
-    menupick = []
-    st.subheader("Edit Menu")
-
-    # st.info("Silakan pilih menu secara manual dari daftar berikut:")
-    for i, (m_name, m_price) in enumerate(menus.items()):
-        qty = st.number_input(f"{m_name} - Rp.{m_price}", min_value=0, step=1, key=m_name)
-        if qty > 0:
-            selected_items[m_name] = (m_price, qty)
-            menupick.append(i)
-    
-    if st.button("Register & Order", type="primary"):
-        if len(selected_items) == 0:
-            st.error("Anda belum memilih menu apapun!")
-        else:
-            headers = {'Content-Type': 'application/json'}
-            selected_menu = [st.session_state.menus2[x] for x in menupick]
-            face = {"menu": selected_menu, "face": st.session_state.new_face, "user": user}
-            response = requests.post(f"{url}/train", data=json.dumps(face), headers=headers) 
-            if "similar face" in response.json().get("status",""):
-                st.warning('Your face is already registered, please order via personalized favorite to edit or manually', icon="🚨")
-            elif "error" in response.json():
-                st.error(f'An error occured: {response.json()["error"]}. Please retake', icon="🚨")
-            else:
-                total = 0
-                st.subheader("Ringkasan Pesanan Anda")
-                menu_array = []
-                for item, (price, qty) in selected_items.items():
-                    subtotal = price * qty
-                    st.write(f"{item} x {qty} - Rp.{subtotal}")
-                    total += subtotal
-                    menu_array.append({
-                        "mapValue": {
-                            "fields": {
-                                "name": {"stringValue": item},
-                                "price": {"integerValue": str(price)},
-                                "quantity": {"integerValue": str(qty)}
-                            }
-                        }
-                    })
-                
-                st.write(f"**Total: Rp.{total}**")
-                st.success("Successfully registered. Your food is being cooked, wait and enjoy!")
-                st.balloons()
-                
-                result = fb.log_menu(user, menu_array, response.json()["new_id"])
-                if result:
-                    st.write("Favorite menu updated & order logged successfully!")
-                    # reset(super=True)
-                    # st.rerun()
