@@ -35,7 +35,7 @@ def check_login():
 # Panggil fungsi ini di awal halaman
 check_login()
 user = st.session_state.get('email')
-url = "https://namely-mint-calf.ngrok-free.app"
+url = "http://127.0.0.1:8000"
 
 hide_navigation_style = """
     <style>
@@ -66,12 +66,12 @@ predictor = dlib.shape_predictor(facial_landmark_file)
 #     cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
 #     return cap
 
-# def calculate_ear(eye):
-#     A = np.linalg.norm(eye[1] - eye[5])
-#     B = np.linalg.norm(eye[2] - eye[4])
-#     C = np.linalg.norm(eye[0] - eye[3])
-#     ear = (A + B) / (2.0 * C)
-#     return ear
+def calculate_ear(eye):
+    A = np.linalg.norm(eye[1] - eye[5])
+    B = np.linalg.norm(eye[2] - eye[4])
+    C = np.linalg.norm(eye[0] - eye[3])
+    ear = (A + B) / (2.0 * C)
+    return ear
 
 # Inisialisasi state jika belum ada
 if 'sudah_pencet' not in st.session_state:
@@ -104,6 +104,8 @@ if 'new_face' not in st.session_state:
     st.session_state.new_face = None
 if 'order' not in st.session_state:
     st.session_state.order = True
+if 'blink' not in st.session_state:
+    st.session_state.blink = False
 
 # idToken = st.session_state.get('idToken')
 user = st.session_state.get('email')
@@ -140,6 +142,13 @@ if st.session_state.cam_active:
         """)
     mode = st.radio("Choose Mode:", ["Face Order", "Register New Face"], key="mode")
 
+
+    if not st.session_state.blink:
+        st.dialog("Take a photo with your eyes closed first")
+    else:
+        st.dialog("Then take it with your eyes opened")
+
+
     img_file_buffer = st.camera_input("Take a picture")
 
     if img_file_buffer is not None:
@@ -160,14 +169,31 @@ if st.session_state.cam_active:
             y2 = min(frame.shape[0], face.bottom() + face.height() // 10)
 
             frame_crop = frame[int(y1):int(y2), int(x1):int(x2)]
+
+            shape = predictor(gray, face)
+            coords = np.array([[p.x, p.y] for p in shape.parts()])
+            left_eye = coords[36:42]
+            right_eye = coords[42:48]
+            ear = (calculate_ear(left_eye) + calculate_ear(right_eye)) / 2.0
+
+            if not st.session_state.blink:
+                st.session_state.EAR_CLOSED = ear
+                st.session_state.blink = True
+            else:
+                if ear > st.session_state.EAR_CLOSED + 0.05:
+                    pass
+                else:
+                    reset(super=True)
+                    st.session_state.cam_active = True
+                    st.error(f'An error occured: Spoofing activity is unallowed! Please retake', icon="🚨")
         
         else:
             st.session_state.cam_active = True
-            st.session_state.response_face = {"error": "Face not detected"}
-            st.error(f'An error occured1: {st.session_state.response_face["error"]}. Please retake', icon="🚨")
             reset(super=True)
+            st.session_state.response_face = {"error": "Face not detected"}
+            st.error(f'An error occured: {st.session_state.response_face["error"]}. Please retake', icon="🚨")
 
-    if 'frame_crop' in globals():
+    if 'frame_crop' in globals() and st.session_state.blink:
         if st.session_state.mode == "Face Order":
             with st.spinner('Recognizing your face'):
                 retval, buffer = cv2.imencode('.jpg', frame_crop)
@@ -178,18 +204,18 @@ if st.session_state.cam_active:
                 response = requests.post(f"{url}/predict", data=json.dumps(face), headers=headers) 
                 st.session_state.order = True
 
-            if "error" in response.json():
-                st.session_state.response_face = response.json()
-                st.error(f'An error occured: {st.session_state.response_face["error"]}. Please retake', icon="🚨")
-                reset(super=True)
-            else:
-                st.session_state.cam_active = False
-                st.session_state.response_face = response.json()
-                st.rerun()
+                if "error" in response.json():
+                    st.session_state.response_face = response.json()
+                    st.error(f'An error occured: {st.session_state.response_face["error"]}. Please retake', icon="🚨")
+                    reset(super=True)
+                else:
+                    st.session_state.cam_active = False
+                    st.session_state.response_face = response.json()
+                    st.rerun()
         
         elif st.session_state.mode == "Register New Face":
             with st.spinner('Capturing your face'):
-                time.sleep(3)
+                time.sleep(2)
                 retval, buffer = cv2.imencode('.jpg', frame_crop)
                 image_bytes = buffer.tobytes()
                 image_base64 = base64.b64encode(image_bytes).decode('utf-8')

@@ -17,7 +17,7 @@ def make_sidebar():
                 logout()
         elif st.session_state.guest_in:
             st.page_link("pages/page4.py", label="Order Menu", icon="🍽️")
-            st.page_link("pages/page5.py", label="Face Recognition", icon="👀")
+            st.page_link("pages/page5_oldie.py", label="Face Recognition", icon="👀")
 
             st.write("")
             st.write("")

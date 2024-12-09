@@ -234,6 +234,7 @@ def convert_utc(date_time):
 def get_sales(user, start, end):
     # date = []
     date_list = [(start + timedelta(days=i)).strftime("%Y-%m-%d") for i in range((end - start).days + 1)]
+    print(date_list)
     json_response = query_log(user, start, end)
    # print(json_response)
     total = [0 for i in range(len(date_list))]
@@ -244,7 +245,19 @@ def get_sales(user, start, end):
         for i, date in enumerate(date_list):
             for doc in json_response:
                 if doc["document"]["fields"]["datetime"]["timestampValue"] == date:
-                    total[i] = total[i] + sum([int(x["mapValue"]["fields"]["price"]["integerValue"]) for x in doc["document"]["fields"]["menu"]["arrayValue"]["values"]])
+                    if doc["document"]["fields"]["done"]["booleanValue"] == True:
+                        sum = 0
+                        for x in doc["document"]["fields"]["menu"]["arrayValue"]["values"]:
+                            if "quantity" in x["mapValue"]["fields"]:
+                                sum += int(x["mapValue"]["fields"]["price"]["integerValue"])*int(x["mapValue"]["fields"]["quantity"]["integerValue"])
+                            else:
+                                sum += int(x["mapValue"]["fields"]["price"]["integerValue"])
+                        total[i] += sum
+                    else:
+                        total[i] += 0
+
+                        # total[i] = total[i] + sum([int(x["mapValue"]["fields"]["price"]["integerValue"]) 
+                        #                            for x in doc["document"]["fields"]["menu"]["arrayValue"]["values"]])
 
     return date_list, total
 
@@ -253,9 +266,36 @@ def get_menuranks(user, start, end):
     menu = ["None"]
     counts = [0]
     if "document" in json_response[0]:
-        menus_counts = Counter(x["mapValue"]["fields"]["name"]["stringValue"] 
-                        for doc in json_response
-                        for x in doc["document"]["fields"]["menu"]["arrayValue"]["values"] )
+        menus_counts = Counter()
+
+        # Loop through the json_response
+        for doc in json_response:
+            # Check if 'done' is True in the document
+            if doc["document"]["fields"]["done"]["booleanValue"] == True:
+                
+                # Loop through the menu values
+                for x in doc["document"]["fields"]["menu"]["arrayValue"]["values"]:
+                    
+                    # Check if 'quantity' exists in the current item
+                    if "quantity" in x["mapValue"]["fields"]:
+                        # Repeat the name based on the quantity
+                        name = x["mapValue"]["fields"]["name"]["stringValue"]
+                        qty = int(x["mapValue"]["fields"]["quantity"]["integerValue"])
+                        
+                        # Add the name repeated qty times
+                        for _ in range(qty):
+                            menus_counts[name] += 1
+                    else:
+                        # If 'quantity' doesn't exist, just add the name once
+                        name = x["mapValue"]["fields"]["name"]["stringValue"]
+                        menus_counts[name] += 1
+
+        # menus_counts = Counter(x["mapValue"]["fields"]["name"]["stringValue"]*int(x["mapValue"]["qty"]["price"]["integerValue"])
+        #                        if "qty" in x["mapValue"]["fields"]["qty"]
+        #                        else
+        #                 for doc in json_response
+        #                 if doc["document"]["fields"]["done"]["booleanValue"] == "true"
+        #                 for x in doc["document"]["fields"]["menu"]["arrayValue"]["values"] )
         menu = [menu for menu, count in menus_counts.items()]  # List of keys
         counts = [count for menu, count in menus_counts.items()]
     # result = [{"name": name, "count": count} for name, count in menus_counts.items()]

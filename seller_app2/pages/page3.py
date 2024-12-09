@@ -64,6 +64,7 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
         orders = []
         for idx, doc in enumerate(json_response, start=1):
             fields = doc["document"]["fields"]
+            id = fields["id"]["integerValue"]
             order_time = datetime.fromisoformat(fields["datetime"]["timestampValue"].replace("Z", "+00:00"))
             order_time = order_time.astimezone(timezone(timedelta(hours=7)))
 
@@ -84,7 +85,7 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
                 total_price += price * quantity
 
             orders.append({
-                "No": idx,  # Kolom nomor urut
+                "No": id,  # Kolom nomor urut
                 "Pilih": False,  # Kolom checkbox
                 "Waktu Pesanan": order_time.strftime("%Y-%m-%d %H:%M:%S"),
                 "Item Pesanan": ", ".join(item_list),
