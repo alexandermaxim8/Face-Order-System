@@ -70,7 +70,11 @@ if 'idToken' in st.session_state and 'email' in st.session_state:
             date_error()
     else:
         menu, counts = fb.get_menuranks(user, from_date_menu, to_date_menu)
-        menuranks_data = pd.DataFrame({"Counts":counts}, index=menu)
+        menuranks_data = pd.DataFrame({"Menu": menu, "Counts": counts})
+        #menuranks_data = pd.DataFrame({"Counts":counts}, index=menu)
+        excluded_menus = ["kamen rider", "turunan", "sia", "kamen faiz", "kamen raider"]
+        menuranks_data = menuranks_data[~menuranks_data["Menu"].isin(excluded_menus)]
+        menuranks_data.set_index("Menu", inplace=True)
         st.bar_chart(menuranks_data)
 
 else:

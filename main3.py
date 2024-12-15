@@ -96,8 +96,9 @@ def face_recog(img, user):
         print(f"Compare error: {str(e)}")
         # return {"error": str(e)}
         return {"found": False}
-    
-    if face_distances[best_match_index] < 0.35: # jarak ecludian 
+    print("face_distances: ", face_distances)
+    print("id: ", id)
+    if face_distances[best_match_index] < 0.451: # jarak ecludian 
         print(f"id: {id}")
         id = id[best_match_index]
         id=int(id)

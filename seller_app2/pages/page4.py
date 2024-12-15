@@ -2,6 +2,7 @@ import streamlit as st
 from navigation import make_sidebar
 from fb_utils2 import get_menu, log_menu
 from datetime import datetime, timezone, timedelta
+import numpy as np
 
 if 'first_visit_manual' not in st.session_state:
     st.session_state.first_visit_manual = True
@@ -80,12 +81,14 @@ if user:
                 })
             
             st.write(f"**Total: Rp.{total}**")
-            st.success("Your food is being cooked, wait and enjoy!")
+            rand_id = np.random.randint(1000, 9999)
+            # st.success("Your food is being cooked, wait and enjoy!")
+            st.success(f'Your food is being cooked, wait and enjoy!\nYour Order ID: {rand_id}')
             st.balloons()
 
             # Barulah di sini kita tulis ke Firebase
             # order_id = int(datetime.now().timestamp())
-            result = log_menu(user, menu_array, 0)
+            result = log_menu(user, menu_array, rand_id)
             if result:
                 st.write("Menu logged successfully!")
 else:

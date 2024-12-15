@@ -54,7 +54,7 @@ make_sidebar()
 st.title("📱Welcome to Face-Order Seller App")
 st.write("Please log in to continue (eatery id `alexandermaxim8`, password `alex12345`).")
 
-email = f'{st.text_input("Eatery ID")}@gmail.com'
+email = f"{st.text_input('Eatery ID')}@gmail.com"
 password = st.text_input("Password", type="password")
 
 token = fb.init_firebase(email, password)

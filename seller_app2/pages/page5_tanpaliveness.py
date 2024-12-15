@@ -1,6 +1,5 @@
 import streamlit as st
 import cv2
-import dlib
 import numpy as np
 import os
 from navigation import make_sidebar
@@ -35,8 +34,8 @@ def check_login():
 # Panggil fungsi ini di awal halaman
 check_login()
 user = st.session_state.get('email')
+# url = "https://namely-mint-calf.ngrok-free.app"
 url = "http://127.0.0.1:8000"
-# url="https://namely-mint-calf.ngrok-free.app"
 
 hide_navigation_style = """
     <style>
@@ -54,25 +53,25 @@ st.write("Aplikasi ini mendeteksi kedip mata sebagai bukti **liveness**. Pastika
 script_dir = os.path.dirname(os.path.abspath(__file__))
 facial_landmark_file = os.path.join(script_dir, 'shape_predictor_68_face_landmarks.dat')
 
-detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor(facial_landmark_file)
+# detector = dlib.get_frontal_face_detector()
+# predictor = dlib.shape_predictor(facial_landmark_file)
 
-@st.cache_resource
-def get_camera():
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-    cap.set(cv2.CAP_PROP_FPS, 20)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 10)
-    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-    return cap
+# @st.cache_resource
+# def get_camera():
+#     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+#     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
+#     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+#     cap.set(cv2.CAP_PROP_FPS, 20)
+#     cap.set(cv2.CAP_PROP_BUFFERSIZE, 10)
+#     cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+#     return cap
 
-def calculate_ear(eye):
-    A = np.linalg.norm(eye[1] - eye[5])
-    B = np.linalg.norm(eye[2] - eye[4])
-    C = np.linalg.norm(eye[0] - eye[3])
-    ear = (A + B) / (2.0 * C)
-    return ear
+# def calculate_ear(eye):
+#     A = np.linalg.norm(eye[1] - eye[5])
+#     B = np.linalg.norm(eye[2] - eye[4])
+#     C = np.linalg.norm(eye[0] - eye[3])
+#     ear = (A + B) / (2.0 * C)
+#     return ear
 
 # Inisialisasi state jika belum ada
 if 'sudah_pencet' not in st.session_state:
@@ -106,7 +105,7 @@ if 'new_face' not in st.session_state:
 if 'order' not in st.session_state:
     st.session_state.order = True
 
-idToken = st.session_state.get('idToken')
+# idToken = st.session_state.get('idToken')
 user = st.session_state.get('email')
 
 reset_button_pressed = st.button("Retake", type="primary")
@@ -140,87 +139,33 @@ if st.session_state.cam_active:
         **Selamat memesan!**
         """)
     mode = st.radio("Choose Mode:", ["Face Order", "Register New Face"], key="mode")
-    
-    col1, col2, col3 = st.columns([1,1,1])
-    with col1:
-        konfirmasi_pressed = st.button("Start Blinking")
 
-    if st.session_state.not_found:
-        st.error(f'An error occured: {st.session_state.response_face["error"]}. Please retake', icon="🚨")
+    img_file_buffer = st.camera_input("Take a picture")
 
-    if konfirmasi_pressed:
-        if len(st.session_state.EAR_buffer) < 5:
-            st.session_state.messages.append("Data EAR belum cukup, tunggu beberapa detik sebelum menekan konfirmasi.")
-        else:
-            st.session_state.sudah_pencet = True
-            mean_ear = np.mean(st.session_state.EAR_buffer)
-            std_ear = np.std(st.session_state.EAR_buffer)
-            st.session_state.EAR_THRESHOLD1 = max(mean_ear - 2 * std_ear, 0.13)
-            st.session_state.EAR_THRESHOLD2 = max(mean_ear + 0.5 * std_ear, 1.1 * st.session_state.EAR_THRESHOLD1)
-            st.session_state.messages.append("Proses kedip dikonfirmasi, silakan kedipkan mata di depan kamera.")
+    if img_file_buffer is not None:
+        # To read image file buffer with OpenCV:
+        st.session_state.cam_active = False
+        bytes_data = img_file_buffer.getvalue()
+        frame_crop = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
+        # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # faces = detector(gray)
 
-    frame_placeholder = st.empty()
-    message_container = st.empty()
+        # x1, y1, x2, y2 = 0, 0, frame.shape[1], frame.shape[0]
 
-    cap = get_camera()
-    font = cv2.FONT_HERSHEY_SIMPLEX
+        # if faces:
+        #     face = max(faces, key=lambda rect: rect.width() * rect.height())
+        #     x1 = max(0, face.left() - face.width() // 20)
+        #     y1 = max(0, face.top() - face.height() // 6)
+        #     x2 = min(frame.shape[1], face.right() + face.width() // 20)
+        #     y2 = min(frame.shape[0], face.bottom() + face.height() // 10)
 
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            st.session_state.messages.append("Video Capture Ended")
-            break
-
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = detector(gray)
-
-        x1, y1, x2, y2 = 0, 0, frame.shape[1], frame.shape[0]
-
-        if faces:
-            face = max(faces, key=lambda rect: rect.width() * rect.height())
-            x1 = max(0, face.left() - face.width() // 20)
-            y1 = max(0, face.top() - face.height() // 6)
-            x2 = min(frame.shape[1], face.right() + face.width() // 20)
-            y2 = min(frame.shape[0], face.bottom() + face.height() // 10)
-
-            frame_crop = frame[int(y1):int(y2), int(x1):int(x2)]
-
-            shape = predictor(gray, face)
-            coords = np.array([[p.x, p.y] for p in shape.parts()])
-            left_eye = coords[36:42]
-            right_eye = coords[42:48]
-            ear = (calculate_ear(left_eye) + calculate_ear(right_eye)) / 2.0
-
-            if not st.session_state.sudah_pencet:
-                st.session_state.EAR_buffer.append(ear)
-            else:
-                EAR_THRESHOLD1 = st.session_state.EAR_THRESHOLD1
-                EAR_THRESHOLD2 = st.session_state.EAR_THRESHOLD2
-
-                if ear < EAR_THRESHOLD1 and st.session_state.blink_counter < 1:
-                    st.session_state.blink_counter += 1
-                elif st.session_state.blink_counter > 0 and ear >= EAR_THRESHOLD2:
-                    if not st.session_state.liveness:
-                        st.session_state.liveness = True
-                        st.session_state.messages.append("Kedipan terdeteksi! Liveness terkonfirmasi.")
-                        time.sleep(1)
-                        break
-
-            cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-
-        frame_placeholder.image(frame, channels="BGR")
-        cv2.waitKey(1)
-
-        with message_container:
-            if st.session_state.messages:
-                st.markdown("<h3 style='font-size:22px;'>Informasi:</h3>", unsafe_allow_html=True)
-                for msg in st.session_state.messages:
-                    st.markdown(f"<p style='font-size:20px;'>{msg}</p>", unsafe_allow_html=True)
-            else:
-                st.markdown("<p style='font-size:20px;'> </p>", unsafe_allow_html=True)
-
-    cap.release()
-    cv2.destroyAllWindows()
+        #     frame_crop = frame[int(y1):int(y2), int(x1):int(x2)]
+        
+        # else:
+        #     st.session_state.cam_active = True
+        #     st.session_state.response_face = {"error": "Face not detected"}
+        #     st.error(f'An error occured1: {st.session_state.response_face["error"]}. Please retake', icon="🚨")
+        #     reset(super=True)
 
     if 'frame_crop' in globals():
         if st.session_state.mode == "Face Order":
@@ -235,9 +180,8 @@ if st.session_state.cam_active:
 
             if "error" in response.json():
                 st.session_state.response_face = response.json()
-                st.session_state.not_found = True
-                reset()
-                st.rerun()
+                st.error(f'An error occured: {st.session_state.response_face["error"]}. Please retake', icon="🚨")
+                reset(super=True)
             else:
                 st.session_state.cam_active = False
                 st.session_state.response_face = response.json()
@@ -245,6 +189,7 @@ if st.session_state.cam_active:
         
         elif st.session_state.mode == "Register New Face":
             with st.spinner('Capturing your face'):
+                time.sleep(3)
                 retval, buffer = cv2.imencode('.jpg', frame_crop)
                 image_bytes = buffer.tobytes()
                 image_base64 = base64.b64encode(image_bytes).decode('utf-8')
@@ -436,4 +381,3 @@ elif (not st.session_state.cam_active) and (not st.session_state.order):
                 result = fb.log_menu(user, menu_array, response.json()["new_id"])
                 if result:
                     st.write("Favorite menu updated & order logged successfully!")
-                    st.write(f'Your Order ID: {response.json()["new_id"]}')
